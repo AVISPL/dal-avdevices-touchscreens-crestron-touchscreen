@@ -1,10 +1,13 @@
 package com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumMap;
-import java.util.HashSet;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
@@ -18,25 +21,35 @@ import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.api.dal.dto.monitor.Statistics;
 import com.avispl.symphony.api.dal.monitor.Monitorable;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.constants.Constant;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.utils.MonitoringUtil;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.IntervalSetting;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.AdapterMetadata;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.adapter.RetrievalType;
 import com.avispl.symphony.dal.communicator.RestCommunicator;
 import com.avispl.symphony.dal.util.StringUtils;
 
+/**
+ * Main adapter class for Crestron Touch Panel. Responsible for generating monitoring, controllable.
+ *
+ * @author Kevin / Symphony Dev Team
+ * @since 1.0.0
+ */
 public class CrestronTouchPanelCommunicator extends RestCommunicator implements Monitorable, Controller {
 	/** Lock for thread-safe operations. */
 	private final ReentrantLock reentrantLock;
 	/** Jackson object mapper for JSON serialization and deserialization. */
 	private final ObjectMapper objectMapper;
 
+	/** Device adapter instantiation timestamp. */
+	private final long adapterInitializationTimestamp;
 	/** Application configuration loaded from {@code version.properties}. */
 	private final Properties versionProperties;
-	/** Stores extended statistics to be sent to the aggregator. */
+	/** Stores extended statistics to be sent to the adapter. */
 	private ExtendedStatistics localExtendedStatistics;
 
 	/** Indicates whether control properties are visible; defaults to false. */
 	private boolean isConfigManagement;
-	/** Indicates whether groups are display; defaults to General. */
+	/** Indicates whether groups are displayed; defaults to General. */
 	private final Set<String> displayPropertyGroups;
 	/** Interval control for retrieving data from APIs. */
 	private final EnumMap<RetrievalType, IntervalSetting> retrievalIntervals;
@@ -45,11 +58,12 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 		this.reentrantLock = new ReentrantLock();
 		this.objectMapper = new ObjectMapper();
 
+		this.adapterInitializationTimestamp = System.currentTimeMillis();
 		this.versionProperties = new Properties();
 		this.localExtendedStatistics = new ExtendedStatistics();
 
 		this.isConfigManagement = false;
-		this.displayPropertyGroups = new HashSet<>(Collections.singletonList(Constant.GENERAL_GROUP));
+		this.displayPropertyGroups = new LinkedHashSet<>(Collections.singletonList(Constant.GENERAL_GROUP));
 		this.retrievalIntervals = new EnumMap<>(RetrievalType.class);
 	}
 
@@ -189,6 +203,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	protected void internalInit() throws Exception {
 		this.setTrustAllCertificates(true);
 		this.setAuthenticationScheme(AuthenticationScheme.None);
+		this.loadProperties(this.versionProperties);
 		super.internalInit();
 	}
 
@@ -210,7 +225,15 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	public List<Statistics> getMultipleStatistics() throws Exception {
 		this.reentrantLock.lock();
 		try {
+			ExtendedStatistics extendedStatistics = new ExtendedStatistics();
+			Map<String, String> statistics = new HashMap<>();
+			statistics.putAll(MonitoringUtil.generateProperties(
+					AdapterMetadata.values(), Constant.ADAPTER_METADATA_GROUP,
+					property -> MonitoringUtil.mapToAdapterMetadata(this.versionProperties, property)
+			));
 
+			extendedStatistics.setStatistics(statistics);
+			this.localExtendedStatistics = extendedStatistics;
 		} finally {
 			this.reentrantLock.unlock();
 		}
@@ -241,6 +264,21 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	}
 
 	/**
+	 * Loads version properties and sets initial values used to create Adapter metadata group.
+	 *
+	 * @param properties the properties to load and update
+	 */
+	private void loadProperties(Properties properties) {
+		try {
+			properties.load(this.getClass().getResourceAsStream("/version.properties"));
+			properties.setProperty(AdapterMetadata.ADAPTER_UPTIME.getProperty(), String.valueOf(this.adapterInitializationTimestamp));
+			properties.setProperty(AdapterMetadata.ACTIVE_PROPERTY_GROUPS.getProperty(), this.getDisplayPropertyGroups());
+		} catch (IOException e) {
+			this.logger.error(Constant.READ_PROPERTIES_FILE_FAILED, e);
+		}
+	}
+
+	/**
 	 * Returns the IntervalSetting for the given type, creating one if absent.
 	 * Guarantees a non-null entry so callers don't need null checks.
 	 */
@@ -254,7 +292,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	 * @param groupName the name of the property group to check
 	 * @return {@code true} if the group is configured to be displayed; {@code false} otherwise
 	 */
-	public boolean shouldDisplayGroup(String groupName) {
+	private boolean shouldDisplayGroup(String groupName) {
 		return this.displayPropertyGroups.contains("All") || this.displayPropertyGroups.contains(groupName);
 	}
 }
