@@ -31,8 +31,8 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <configuration>
-          <source>8</source>
-          <target>8</target>
+          <source>17</source>
+          <target>17</target>
         </configuration>
       </plugin>
       <plugin>
@@ -110,21 +110,21 @@
       <artifactId>symphony-api-dal</artifactId>
       <version>${symphonyApiVersion}</version>
       <scope>system</scope>
-      <systemPath>${basedir}/lib/symphony-api-dal-5.15.0.jar</systemPath>
+      <systemPath>${basedir}/lib/symphony-api-dal-6.3.0.jar</systemPath>
     </dependency>
     <dependency>
       <groupId>com.avispl.symphony.dal</groupId>
       <artifactId>symphony-dal-commons</artifactId>
       <version>${symphonyApiVersion}</version>
       <scope>system</scope>
-      <systemPath>${basedir}/lib/symphony-dal-commons-5.15.0.jar</systemPath>
+      <systemPath>${basedir}/lib/symphony-dal-commons-6.3.0.jar</systemPath>
     </dependency>
     <dependency>
       <groupId>com.avispl.symphony.api</groupId>
       <artifactId>symphony-api-commons</artifactId>
       <version>${symphonyApiVersion}</version>
       <scope>system</scope>
-      <systemPath>${basedir}/lib/symphony-api-commons-5.15.0.jar</systemPath>
+      <systemPath>${basedir}/lib/symphony-api-commons-6.2.0.jar</systemPath>
     </dependency>
     <dependency>
       <groupId>org.icmp4j</groupId>
@@ -155,19 +155,19 @@
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-web</artifactId>
-      <version>5.2.25.RELEASE</version>
+      <version>6.2.1</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-expression</artifactId>
-      <version>5.2.25.RELEASE</version>
+      <version>6.2.1</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-context-support</artifactId>
-      <version>5.2.25.RELEASE</version>
+      <version>6.2.1</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
@@ -195,10 +195,20 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.httpcomponents</groupId>
-      <artifactId>httpclient</artifactId>
-      <version>4.5.13</version>
+      <groupId>org.apache.httpcomponents.client5</groupId>
+      <artifactId>httpclient5</artifactId>
+      <version>5.4.4</version>
       <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>jakarta.xml.bind</groupId>
+      <artifactId>jakarta.xml.bind-api</artifactId>
+      <version>4.0.2</version>
+    </dependency>
+    <dependency>
+      <groupId>org.glassfish.jaxb</groupId>
+      <artifactId>jaxb-runtime</artifactId>
+      <version>4.0.5</version>
     </dependency>
     <!-- test dependencies -->
     <dependency>

@@ -1,4 +1,4 @@
-package com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types;
+package com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties;
 
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.bases.BaseProperty;
 

@@ -12,7 +12,16 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpClientErrorException.Forbidden;
+import org.springframework.web.client.HttpClientErrorException.Unauthorized;
+import org.springframework.web.client.RestTemplate;
+
+import javax.security.auth.login.FailedLoginException;
 import org.apache.commons.collections.CollectionUtils;
 
 import com.avispl.symphony.api.dal.control.Controller;
@@ -21,10 +30,12 @@ import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.api.dal.dto.monitor.Statistics;
 import com.avispl.symphony.api.dal.monitor.Monitorable;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.constants.Constant;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.constants.EndpointConstant;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.utils.MonitoringUtil;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.AuthCookie;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.IntervalSetting;
-import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.AdapterMetadata;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.adapter.RetrievalType;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.AdapterMetadata;
 import com.avispl.symphony.dal.communicator.RestCommunicator;
 import com.avispl.symphony.dal.util.StringUtils;
 
@@ -37,8 +48,6 @@ import com.avispl.symphony.dal.util.StringUtils;
 public class CrestronTouchPanelCommunicator extends RestCommunicator implements Monitorable, Controller {
 	/** Lock for thread-safe operations. */
 	private final ReentrantLock reentrantLock;
-	/** Jackson object mapper for JSON serialization and deserialization. */
-	private final ObjectMapper objectMapper;
 
 	/** Device adapter instantiation timestamp. */
 	private final long adapterInitializationTimestamp;
@@ -46,6 +55,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	private final Properties versionProperties;
 	/** Stores extended statistics to be sent to the adapter. */
 	private ExtendedStatistics localExtendedStatistics;
+	private AuthCookie authCookie;
 
 	/** Indicates whether control properties are visible; defaults to false. */
 	private boolean isConfigManagement;
@@ -56,11 +66,11 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 
 	public CrestronTouchPanelCommunicator() {
 		this.reentrantLock = new ReentrantLock();
-		this.objectMapper = new ObjectMapper();
 
 		this.adapterInitializationTimestamp = System.currentTimeMillis();
 		this.versionProperties = new Properties();
 		this.localExtendedStatistics = new ExtendedStatistics();
+		this.authCookie = new AuthCookie();
 
 		this.isConfigManagement = false;
 		this.displayPropertyGroups = new LinkedHashSet<>(Collections.singletonList(Constant.GENERAL_GROUP));
@@ -211,6 +221,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	protected void internalDestroy() {
 		this.versionProperties.clear();
 		this.localExtendedStatistics = null;
+		this.authCookie = null;
 		this.displayPropertyGroups.clear();
 		this.retrievalIntervals.clear();
 		super.internalDestroy();
@@ -218,13 +229,59 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 
 	@Override
 	protected void authenticate() throws Exception {
+		if (StringUtils.isNullOrEmpty(this.getLogin(), true)
+				|| StringUtils.isNullOrEmpty(this.getPassword(), true)) {
+			throw new FailedLoginException(Constant.LOGIN_FAILED);
+		}
+		try {
+			RestTemplate restTemplate = this.obtainRestTemplate();
+			final String baseUrl = this.getProtocol() + "://" + this.host + ":" + this.getPort();
+			final String loginUrl = baseUrl + EndpointConstant.LOGIN;
+			//	Send GET login request to fetch TRACK ID cookie, required for POST login request.
+			if (this.authCookie.getTrackId() == null) {
+				ResponseEntity<String> getLoginResponse = restTemplate.exchange(loginUrl, HttpMethod.GET, HttpEntity.EMPTY, String.class);
+				List<String> getCookies = getLoginResponse.getHeaders().get(HttpHeaders.SET_COOKIE);
+				if (CollectionUtils.isNotEmpty(getCookies)) {
+					String trackIdCookieValue = getCookies.get(0);
+					this.authCookie.setTrackId(trackIdCookieValue);
+					this.authCookie.setOrigin(this.host);
+					this.authCookie.setLoginReferer(this.host + EndpointConstant.LOGIN);
+				}
+			}
+			//	Send POST login request to fetch Set-Cookie and refresh token.
+			if (this.authCookie.getCookie() == null) {
+				//	Call the Logout API to clear the login session
+				restTemplate.exchange(baseUrl + EndpointConstant.LOGOUT, HttpMethod.GET, HttpEntity.EMPTY, String.class);
+				HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(
+						this.authCookie.getFormURLEncodedBody(this.getLogin(), this.getPassword()),
+						this.authCookie.getRequestHeaders()
+				);
+				ResponseEntity<String> postLoginResponse = restTemplate.exchange(loginUrl, HttpMethod.POST, request, String.class);
+				List<String> postCookies = postLoginResponse.getHeaders().get(HttpHeaders.SET_COOKIE);
+				if (CollectionUtils.isNotEmpty(postCookies)) {
+					this.authCookie.setCookie(String.join(Constant.COMMA, postCookies));
+					this.authCookie.setRefreshToken(postLoginResponse.getHeaders().getFirst(Constant.CREST_XSRF_TOKEN_HEADER));
+				}
+			}
+		} catch (Unauthorized | Forbidden ex) {
+			throw new FailedLoginException(ex.getResponseBodyAsString());
+		}
+	}
 
+	@Override
+	protected HttpHeaders putExtraRequestHeaders(HttpMethod httpMethod, String uri, HttpHeaders headers) throws Exception {
+		headers.set(HttpHeaders.COOKIE, this.authCookie.getCookie());
+		if (HttpMethod.POST.equals(httpMethod)) {
+			headers.set(Constant.X_CREST_XSRF_TOKEN_HEADER, this.authCookie.getRefreshToken());
+		}
+		return super.putExtraRequestHeaders(httpMethod, uri, headers);
 	}
 
 	@Override
 	public List<Statistics> getMultipleStatistics() throws Exception {
 		this.reentrantLock.lock();
 		try {
+			this.setupData();
 			ExtendedStatistics extendedStatistics = new ExtendedStatistics();
 			Map<String, String> statistics = new HashMap<>();
 			statistics.putAll(MonitoringUtil.generateProperties(
@@ -244,7 +301,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	public void controlProperty(ControllableProperty controllableProperty) throws Exception {
 		this.reentrantLock.lock();
 		try {
-
+			System.out.println("Empty method");
 		} finally {
 			this.reentrantLock.unlock();
 		}
@@ -278,21 +335,15 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 		}
 	}
 
+	private void setupData() throws Exception {
+		this.authenticate();
+	}
+
 	/**
 	 * Returns the IntervalSetting for the given type, creating one if absent.
 	 * Guarantees a non-null entry so callers don't need null checks.
 	 */
 	private IntervalSetting getIntervalSettingByType(RetrievalType type) {
 		return this.retrievalIntervals.computeIfAbsent(type, t -> new IntervalSetting());
-	}
-
-	/**
-	 * Checks whether the specified property group is configured to be displayed.
-	 *
-	 * @param groupName the name of the property group to check
-	 * @return {@code true} if the group is configured to be displayed; {@code false} otherwise
-	 */
-	private boolean shouldDisplayGroup(String groupName) {
-		return this.displayPropertyGroups.contains("All") || this.displayPropertyGroups.contains(groupName);
 	}
 }

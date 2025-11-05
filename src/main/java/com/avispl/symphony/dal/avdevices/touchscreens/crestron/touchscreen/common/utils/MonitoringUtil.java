@@ -14,7 +14,7 @@ import org.apache.commons.logging.LogFactory;
 
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.bases.BaseProperty;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.constants.Constant;
-import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.AdapterMetadata;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.AdapterMetadata;
 import com.avispl.symphony.dal.util.StringUtils;
 
 /**
@@ -64,19 +64,11 @@ public final class MonitoringUtil {
 			LOGGER.warn("The versionProperties is null, returning empty map");
 			return null;
 		}
-		switch (adapterMetadata) {
-			case ADAPTER_UPTIME:
-				return mapToUptime(versionProperties.getProperty(adapterMetadata.getProperty()));
-			case ADAPTER_UPTIME_MIN:
-				return mapToUptimeMin(versionProperties.getProperty(adapterMetadata.getProperty()));
-			case ADAPTER_BUILD_DATE:
-			case ADAPTER_VERSION:
-			case ACTIVE_PROPERTY_GROUPS:
-				return mapToValue(versionProperties.getProperty(adapterMetadata.getProperty()));
-			default:
-				LOGGER.warn(String.format(Constant.UNSUPPORTED_MAP_PROPERTY_WARNING, "mapToAdapterMetadata", adapterMetadata.getProperty()));
-				return null;
-		}
+		return switch (adapterMetadata) {
+			case ADAPTER_UPTIME -> mapToUptime(versionProperties.getProperty(adapterMetadata.getProperty()));
+			case ADAPTER_UPTIME_MIN -> mapToUptimeMin(versionProperties.getProperty(adapterMetadata.getProperty()));
+			case ADAPTER_BUILD_DATE, ADAPTER_VERSION, ACTIVE_PROPERTY_GROUPS -> mapToValue(versionProperties.getProperty(adapterMetadata.getProperty()));
+		};
 	}
 
 	/**
@@ -95,8 +87,7 @@ public final class MonitoringUtil {
 		if (value == null) {
 			return Constant.NOT_AVAILABLE;
 		}
-		if (value instanceof String) {
-			String str = (String) value;
+		if (value instanceof String str) {
 			if ("true".equalsIgnoreCase(str) || "false".equalsIgnoreCase(str)) {
 				return str;
 			}
