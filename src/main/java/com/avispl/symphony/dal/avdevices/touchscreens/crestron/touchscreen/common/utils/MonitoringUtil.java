@@ -1,3 +1,4 @@
+/** Copyright (c) 2025 AVI-SPL, Inc. All Rights Reserved. */
 package com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.utils;
 
 import java.util.Arrays;
@@ -14,7 +15,9 @@ import org.apache.commons.logging.LogFactory;
 
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.bases.BaseProperty;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.constants.Constant;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.DeviceInfo;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.AdapterMetadata;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.General;
 import com.avispl.symphony.dal.util.StringUtils;
 
 /**
@@ -68,6 +71,27 @@ public final class MonitoringUtil {
 			case ADAPTER_UPTIME -> mapToUptime(versionProperties.getProperty(adapterMetadata.getProperty()));
 			case ADAPTER_UPTIME_MIN -> mapToUptimeMin(versionProperties.getProperty(adapterMetadata.getProperty()));
 			case ADAPTER_BUILD_DATE, ADAPTER_VERSION, ACTIVE_PROPERTY_GROUPS -> mapToValue(versionProperties.getProperty(adapterMetadata.getProperty()));
+		};
+	}
+
+	/**
+	 * Generates general map from device info object. Returns empty map if null or all values unavailable.
+	 *
+	 * @param deviceInfo device info object
+	 * @return the General map
+	 */
+	public static String mapToGeneral(DeviceInfo deviceInfo, General general) {
+		if (deviceInfo == null) {
+			LOGGER.warn("The deviceInfo is null, returning empty map");
+			return null;
+		}
+		return switch (general) {
+			case BUILD_DATE -> mapToValue(deviceInfo.getBuildDate());
+			case FIRMWARE_VERSION -> mapToValue(deviceInfo.getDeviceVersion());
+			case PRODUCT_ID -> mapToValue(deviceInfo.getModelId());
+			case NAME -> mapToValue(deviceInfo.getName());
+			case PUF_VERSION -> mapToValue(deviceInfo.getPufVersion());
+			case SERIAL_NUMBER -> mapToValue(deviceInfo.getSerialNumber());
 		};
 	}
 
