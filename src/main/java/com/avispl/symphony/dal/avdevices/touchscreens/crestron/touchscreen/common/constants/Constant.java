@@ -1,3 +1,4 @@
+/** Copyright (c) 2025 AVI-SPL, Inc. All Rights Reserved. */
 package com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.constants;
 
 import java.time.Duration;
@@ -31,6 +32,7 @@ public final class Constant {
 	//	Groups
 	public static final String GENERAL_GROUP = "General";
 	public static final String ADAPTER_METADATA_GROUP = "AdapterMetadata";
+	public static final String CAPABILITIES_GROUP = "Capabilities";
 
 	//	Warning messages
 	public static final String CONTROLLABLE_PROPS_EMPTY_WARNING = "ControllableProperties list is null or empty, skipping control operation";

@@ -1,3 +1,4 @@
+/** Copyright (c) 2025 AVI-SPL, Inc. All Rights Reserved. */
 package com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen;
 
 import java.io.IOException;
@@ -8,6 +9,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
@@ -21,6 +23,8 @@ import org.springframework.web.client.HttpClientErrorException.Forbidden;
 import org.springframework.web.client.HttpClientErrorException.Unauthorized;
 import org.springframework.web.client.RestTemplate;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import javax.security.auth.login.FailedLoginException;
 import org.apache.commons.collections.CollectionUtils;
 
@@ -28,14 +32,20 @@ import com.avispl.symphony.api.dal.control.Controller;
 import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
 import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.api.dal.dto.monitor.Statistics;
+import com.avispl.symphony.api.dal.error.ResourceNotReachableException;
 import com.avispl.symphony.api.dal.monitor.Monitorable;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.constants.Constant;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.constants.EndpointConstant;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.utils.MonitoringUtil;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.AuthCookie;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.DeviceCapabilities;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.DeviceInfo;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.IntervalSetting;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.ResponseType;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.adapter.RetrievalType;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.AdapterMetadata;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.Capabilities;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.General;
 import com.avispl.symphony.dal.communicator.RestCommunicator;
 import com.avispl.symphony.dal.util.StringUtils;
 
@@ -48,6 +58,8 @@ import com.avispl.symphony.dal.util.StringUtils;
 public class CrestronTouchPanelCommunicator extends RestCommunicator implements Monitorable, Controller {
 	/** Lock for thread-safe operations. */
 	private final ReentrantLock reentrantLock;
+	/** Object mapper used to convert JSON responses into Java objects. */
+	private final ObjectMapper objectMapper;
 
 	/** Device adapter instantiation timestamp. */
 	private final long adapterInitializationTimestamp;
@@ -55,7 +67,11 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	private final Properties versionProperties;
 	/** Stores extended statistics to be sent to the adapter. */
 	private ExtendedStatistics localExtendedStatistics;
+	/** Authentication cookie data used for login session in {@link #authenticate()}. */
 	private AuthCookie authCookie;
+	/** Device information retrieved from {@link EndpointConstant#DEVICE_INFO}. */
+	private DeviceInfo deviceInfo;
+	private DeviceCapabilities deviceCapabilities;
 
 	/** Indicates whether control properties are visible; defaults to false. */
 	private boolean isConfigManagement;
@@ -66,11 +82,14 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 
 	public CrestronTouchPanelCommunicator() {
 		this.reentrantLock = new ReentrantLock();
+		this.objectMapper = new ObjectMapper();
 
 		this.adapterInitializationTimestamp = System.currentTimeMillis();
 		this.versionProperties = new Properties();
 		this.localExtendedStatistics = new ExtendedStatistics();
 		this.authCookie = new AuthCookie();
+		this.deviceInfo = new DeviceInfo();
+		this.deviceCapabilities = new DeviceCapabilities();
 
 		this.isConfigManagement = false;
 		this.displayPropertyGroups = new LinkedHashSet<>(Collections.singletonList(Constant.GENERAL_GROUP));
@@ -222,6 +241,8 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 		this.versionProperties.clear();
 		this.localExtendedStatistics = null;
 		this.authCookie = null;
+		this.deviceInfo = null;
+		this.deviceCapabilities = null;
 		this.displayPropertyGroups.clear();
 		this.retrievalIntervals.clear();
 		super.internalDestroy();
@@ -285,8 +306,16 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 			ExtendedStatistics extendedStatistics = new ExtendedStatistics();
 			Map<String, String> statistics = new HashMap<>();
 			statistics.putAll(MonitoringUtil.generateProperties(
+					General.values(), null,
+					property -> MonitoringUtil.mapToGeneral(this.deviceInfo, property)
+			));
+			statistics.putAll(MonitoringUtil.generateProperties(
 					AdapterMetadata.values(), Constant.ADAPTER_METADATA_GROUP,
 					property -> MonitoringUtil.mapToAdapterMetadata(this.versionProperties, property)
+			));
+			statistics.putAll(MonitoringUtil.generateProperties(
+					Capabilities.values(), Constant.CAPABILITIES_GROUP,
+					property -> MonitoringUtil.mapToCapabilities(this.deviceCapabilities, property)
 			));
 
 			extendedStatistics.setStatistics(statistics);
@@ -335,8 +364,15 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 		}
 	}
 
+	/**
+	 * Initializes and loads required device data from the APIs.
+	 *
+	 * @throws Exception if authentication or data retrieval fails
+	 */
 	private void setupData() throws Exception {
 		this.authenticate();
+		this.deviceInfo = this.fetchData(EndpointConstant.DEVICE_INFO, ResponseType.DEVICE_INFO);
+		this.deviceCapabilities = this.fetchData(EndpointConstant.DEVICE_CAPABILITIES, ResponseType.DEVICE_CAPABILITIES);
 	}
 
 	/**
@@ -345,5 +381,35 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	 */
 	private IntervalSetting getIntervalSettingByType(RetrievalType type) {
 		return this.retrievalIntervals.computeIfAbsent(type, t -> new IntervalSetting());
+	}
+
+	/**
+	 * Fetches data from a given endpoint and maps the response to the specified class type in {@link ResponseType}.
+	 *
+	 * @param endpoint the API endpoint URL to request data from
+	 * @param responseType defines how to extract and map the response into a specific class
+	 * @param <T> the generic type representing the expected response object
+	 * @return the mapped response object, or {@code null} if the response is empty or mapping fails
+	 * @throws FailedLoginException if authentication fails while accessing the endpoint
+	 * @throws ResourceNotReachableException if the target endpoint cannot be reached
+	 */
+	public <T> T fetchData(String endpoint, ResponseType responseType) throws FailedLoginException {
+		String responseClassName = responseType.getClazz().getSimpleName();
+		try {
+			String response = super.doGet(endpoint);
+			JsonNode responseNode = responseType.getPaths(this.objectMapper.readTree(response));
+			@SuppressWarnings("unchecked")
+			T mappedResponse = (T) this.objectMapper.treeToValue(responseNode, responseType.getClazz());
+			if (Objects.isNull(mappedResponse)) {
+				this.logger.warn(String.format(Constant.FETCHED_DATA_NULL_WARNING, endpoint, responseClassName));
+			}
+
+			return mappedResponse;
+		} catch (FailedLoginException | ResourceNotReachableException e) {
+			throw e;
+		} catch (Exception e) {
+			this.logger.error(String.format(Constant.FETCH_DATA_FAILED, endpoint, responseClassName), e);
+			return null;
+		}
 	}
 }
