@@ -3,10 +3,18 @@ package com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.type
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.DeviceCapabilities;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.DeviceInfo;
 
+/**
+ * Defines different response types and their associated model classes.
+ *
+ * @author Kevin / Symphony Dev Team
+ * @since 1.0.0
+ */
 public enum ResponseType {
-	DEVICE_INFO(DeviceInfo.class);
+	DEVICE_INFO(DeviceInfo.class),
+	DEVICE_CAPABILITIES(DeviceCapabilities.class);
 
 	private final Class<?> clazz;
 
@@ -28,6 +36,9 @@ public enum ResponseType {
 		switch (this) {
 			case DEVICE_INFO -> {
 				return root.path("DeviceInfo");
+			}
+			case DEVICE_CAPABILITIES -> {
+				return root.path("DeviceCapabilities");
 			}
 			default -> {
 				return root;

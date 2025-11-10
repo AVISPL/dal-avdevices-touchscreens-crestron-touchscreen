@@ -32,6 +32,7 @@ public final class Constant {
 	//	Groups
 	public static final String GENERAL_GROUP = "General";
 	public static final String ADAPTER_METADATA_GROUP = "AdapterMetadata";
+	public static final String CAPABILITIES_GROUP = "Capabilities";
 
 	//	Warning messages
 	public static final String CONTROLLABLE_PROPS_EMPTY_WARNING = "ControllableProperties list is null or empty, skipping control operation";
