@@ -1,3 +1,4 @@
+/** Copyright (c) 2025 AVI-SPL, Inc. All Rights Reserved. */
 package com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen;
 
 import java.util.LinkedHashMap;
@@ -49,7 +50,8 @@ class CrestronTouchPanelCommunicatorTest {
 
 	private void verifyStatistics(Map<String, String> statistics) {
 		Map<String, Map<String, String>> groups = new LinkedHashMap<>();
-		groups.put(Constant.ADAPTER_METADATA_GROUP, this.filterGroupStatistics(statistics, null));
+		groups.put(Constant.GENERAL_GROUP, this.filterGroupStatistics(statistics, null));
+		groups.put(Constant.ADAPTER_METADATA_GROUP, this.filterGroupStatistics(statistics, Constant.ADAPTER_METADATA_GROUP));
 
 		for (Map<String, String> initGroup : groups.values()) {
 			for (Map.Entry<String, String> initStatistics : initGroup.entrySet()) {
