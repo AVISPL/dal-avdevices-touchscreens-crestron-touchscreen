@@ -8,4 +8,5 @@ public final class EndpointConstant {
 	public static final String LOGIN = "/userlogin.html";
 	public static final String LOGOUT = "/logout";
 	public static final String DEVICE_INFO = "/Device/DeviceInfo";
+	public static final String DEVICE_CAPABILITIES = "/Device/DeviceCapabilities";
 }

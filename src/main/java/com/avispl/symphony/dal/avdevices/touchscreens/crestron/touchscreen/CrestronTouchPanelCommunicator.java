@@ -38,11 +38,13 @@ import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.commo
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.constants.EndpointConstant;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.utils.MonitoringUtil;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.AuthCookie;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.DeviceCapabilities;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.DeviceInfo;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.IntervalSetting;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.ResponseType;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.adapter.RetrievalType;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.AdapterMetadata;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.Capabilities;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.General;
 import com.avispl.symphony.dal.communicator.RestCommunicator;
 import com.avispl.symphony.dal.util.StringUtils;
@@ -69,6 +71,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	private AuthCookie authCookie;
 	/** Device information retrieved from {@link EndpointConstant#DEVICE_INFO}. */
 	private DeviceInfo deviceInfo;
+	private DeviceCapabilities deviceCapabilities;
 
 	/** Indicates whether control properties are visible; defaults to false. */
 	private boolean isConfigManagement;
@@ -86,6 +89,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 		this.localExtendedStatistics = new ExtendedStatistics();
 		this.authCookie = new AuthCookie();
 		this.deviceInfo = new DeviceInfo();
+		this.deviceCapabilities = new DeviceCapabilities();
 
 		this.isConfigManagement = false;
 		this.displayPropertyGroups = new LinkedHashSet<>(Collections.singletonList(Constant.GENERAL_GROUP));
@@ -238,6 +242,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 		this.localExtendedStatistics = null;
 		this.authCookie = null;
 		this.deviceInfo = null;
+		this.deviceCapabilities = null;
 		this.displayPropertyGroups.clear();
 		this.retrievalIntervals.clear();
 		super.internalDestroy();
@@ -308,6 +313,10 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 					AdapterMetadata.values(), Constant.ADAPTER_METADATA_GROUP,
 					property -> MonitoringUtil.mapToAdapterMetadata(this.versionProperties, property)
 			));
+			statistics.putAll(MonitoringUtil.generateProperties(
+					Capabilities.values(), Constant.CAPABILITIES_GROUP,
+					property -> MonitoringUtil.mapToCapabilities(this.deviceCapabilities, property)
+			));
 
 			extendedStatistics.setStatistics(statistics);
 			this.localExtendedStatistics = extendedStatistics;
@@ -363,6 +372,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	private void setupData() throws Exception {
 		this.authenticate();
 		this.deviceInfo = this.fetchData(EndpointConstant.DEVICE_INFO, ResponseType.DEVICE_INFO);
+		this.deviceCapabilities = this.fetchData(EndpointConstant.DEVICE_CAPABILITIES, ResponseType.DEVICE_CAPABILITIES);
 	}
 
 	/**

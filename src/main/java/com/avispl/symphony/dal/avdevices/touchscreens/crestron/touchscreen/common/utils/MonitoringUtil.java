@@ -15,8 +15,11 @@ import org.apache.commons.logging.LogFactory;
 
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.bases.BaseProperty;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.constants.Constant;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.DeviceCapabilities;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.DeviceInfo;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.PortConfig;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.AdapterMetadata;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.Capabilities;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.General;
 import com.avispl.symphony.dal.util.StringUtils;
 
@@ -57,7 +60,7 @@ public final class MonitoringUtil {
 	}
 
 	/**
-	 * Generates adapter metadata map from version properties. Returns empty map if null or all values unavailable.
+	 * Generates adapter metadata map from version properties. Returns empty property if null or all values unavailable.
 	 *
 	 * @param versionProperties adapter version and build information
 	 * @return the Adapter Metadata map
@@ -75,14 +78,14 @@ public final class MonitoringUtil {
 	}
 
 	/**
-	 * Generates general map from device info object. Returns empty map if null or all values unavailable.
+	 * Generates general map from device info object. Returns empty property if null or all values unavailable.
 	 *
 	 * @param deviceInfo device info object
-	 * @return the General map
+	 * @return the General property
 	 */
 	public static String mapToGeneral(DeviceInfo deviceInfo, General general) {
 		if (deviceInfo == null) {
-			LOGGER.warn("The deviceInfo is null, returning empty map");
+			LOGGER.warn("The deviceInfo is null, returning empty property");
 			return null;
 		}
 		return switch (general) {
@@ -93,6 +96,33 @@ public final class MonitoringUtil {
 			case PUF_VERSION -> mapToValue(deviceInfo.getPufVersion());
 			case SERIAL_NUMBER -> mapToValue(deviceInfo.getSerialNumber());
 		};
+	}
+
+	/**
+	 * Generates general map from device info object. Returns empty property if null or all values unavailable.
+	 *
+	 * @param capabilities device capabilities object
+	 * @return the Capability property
+	 */
+	public static String mapToCapabilities(DeviceCapabilities capabilities, Capabilities property) {
+		if (capabilities == null) {
+			LOGGER.warn("The capabilities is null, returning empty property");
+			return null;
+		}
+		return switch (property) {
+			case CONFIG_FILE_UPLOAD_SUPPORTED -> mapToValue(capabilities.getConfigFileUploadSupported());
+			case LOG_FILE_UPLOAD_SUPPORTED -> mapToValue(capabilities.getLogFileUploadSupported());
+			case PC_NUMBER_OF_DM_INPUT -> mapToValue(getPortConfig(capabilities).getNumberOfDmInputs());
+			case PC_NUMBER_OF_ETHERNET_ADAPTERS -> mapToValue(getPortConfig(capabilities).getNumberOfEthernetAdapters());
+			case PC_NUMBER_OF_HDMI_INPUTS -> mapToValue(getPortConfig(capabilities).getNumberOfHdmiInputs());
+			case PC_NUMBER_OF_HDMI_OUTPUTS -> mapToValue(getPortConfig(capabilities).getNumberOfHdmiOutputs());
+		};
+	}
+
+	private static PortConfig getPortConfig(DeviceCapabilities capabilities) {
+		return capabilities == null
+				? new PortConfig()
+				: Optional.ofNullable(capabilities.getPortConfig()).orElse(new PortConfig());
 	}
 
 	/**
