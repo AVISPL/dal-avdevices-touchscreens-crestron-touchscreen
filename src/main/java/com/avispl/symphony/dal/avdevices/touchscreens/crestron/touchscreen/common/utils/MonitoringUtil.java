@@ -3,6 +3,8 @@ package com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.comm
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -10,17 +12,20 @@ import java.util.Properties;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.bases.BaseProperty;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.constants.Constant;
-import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.DeviceCapabilities;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.DeviceInfo;
-import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.PortConfig;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.SystemVersion;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.capabilities.DeviceCapabilities;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.capabilities.PortConfig;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.AdapterMetadata;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.Capabilities;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.General;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.SystemVersions;
 import com.avispl.symphony.dal.util.StringUtils;
 
 /**
@@ -60,6 +65,34 @@ public final class MonitoringUtil {
 	}
 
 	/**
+	 * Generates a key–value map representing all available {@link SystemVersion} properties.
+	 * <p>
+	 * Each {@link SystemVersion} produces multiple entries, one for each constant defined
+	 * in {@link SystemVersions}. The property names are constructed using the format
+	 * defined in {@link Constant#PROPERTY_FORMAT}, prefixed by
+	 * {@link Constant#SYSTEM_VERSIONS_GROUP} and the sanitized, title-cased system version name.
+	 * </p>
+	 *
+	 * @param systemVersions the list of {@link SystemVersion} entries to process; if null or empty, an empty map is returned
+	 * @return a {@link Map} containing formatted property names as keys and the corresponding system version values as map entries
+	 */
+	public static Map<String, String> generateSystemVersionProperties(List<SystemVersion> systemVersions) {
+		if (CollectionUtils.isEmpty(systemVersions)) {
+			return Collections.emptyMap();
+		}
+		SystemVersions[] versionProps = SystemVersions.values();
+		Map<String, String> properties = new HashMap<>();
+		systemVersions.forEach(systemVersion -> {
+			String prefixName = toTitleCase(Constant.NON_ALPHANUMERIC_PATTERN.matcher(systemVersion.getName()).replaceAll(Constant.EMPTY));
+			Arrays.stream(versionProps).forEach(property -> properties.put(
+					String.format(Constant.PROPERTY_FORMAT, Constant.SYSTEM_VERSIONS_GROUP, prefixName + property.getName()),
+					Optional.ofNullable(mapToSystemVersion(systemVersion, property)).orElse(Constant.NOT_AVAILABLE)
+			));
+		});
+		return properties;
+	}
+
+	/**
 	 * Generates adapter metadata map from version properties. Returns empty property if null or all values unavailable.
 	 *
 	 * @param versionProperties adapter version and build information
@@ -78,7 +111,7 @@ public final class MonitoringUtil {
 	}
 
 	/**
-	 * Generates general map from device info object. Returns empty property if null or all values unavailable.
+	 * Generates general property from device info object. Returns empty property if null or all values unavailable.
 	 *
 	 * @param deviceInfo device info object
 	 * @return the General property
@@ -99,7 +132,7 @@ public final class MonitoringUtil {
 	}
 
 	/**
-	 * Generates general map from device info object. Returns empty property if null or all values unavailable.
+	 * Generates capability property from device capabilities object. Returns empty property if null or all values unavailable.
 	 *
 	 * @param capabilities device capabilities object
 	 * @return the Capability property
@@ -119,6 +152,36 @@ public final class MonitoringUtil {
 		};
 	}
 
+	/**
+	 * Generates system version property from device info object. Returns empty property if null or all values unavailable.
+	 *
+	 * @param systemVersion system version object
+	 * @return the System Versions property
+	 */
+	public static String mapToSystemVersion(SystemVersion systemVersion, SystemVersions property) {
+		if (systemVersion == null) {
+			LOGGER.warn("The systemVersion is null, returning empty property");
+			return null;
+		}
+		return switch (property) {
+			case CATEGORY -> mapToValue(systemVersion.getCategory());
+			case VERSION -> mapToValue(systemVersion.getVersion());
+		};
+	}
+
+	/**
+	 * Retrieves the {@link PortConfig} instance from the given {@link DeviceCapabilities}.
+	 * <p>
+	 * If the provided {@code capabilities} object is {@code null}, or if its internal
+	 * {@code portConfig} property is {@code null}, this method returns a new, empty
+	 * {@link PortConfig} instance instead of {@code null}.
+	 * </p>
+	 *
+	 * @param capabilities the {@link DeviceCapabilities} object from which to extract
+	 *                     the {@link PortConfig}; may be {@code null}
+	 * @return the existing {@link PortConfig} if available, or a new instance if
+	 *         {@code capabilities} or its port configuration is {@code null}
+	 */
 	private static PortConfig getPortConfig(DeviceCapabilities capabilities) {
 		return capabilities == null
 				? new PortConfig()
@@ -143,7 +206,7 @@ public final class MonitoringUtil {
 		}
 		if (value instanceof String str) {
 			if ("true".equalsIgnoreCase(str) || "false".equalsIgnoreCase(str)) {
-				return str;
+				return str.toLowerCase();
 			}
 			return StringUtils.isNotNullOrEmpty(str) ? toTitleCase(str) : Constant.NOT_AVAILABLE;
 		}

@@ -2,6 +2,7 @@
 package com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumMap;
@@ -38,9 +39,10 @@ import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.commo
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.constants.EndpointConstant;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.utils.MonitoringUtil;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.AuthCookie;
-import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.DeviceCapabilities;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.DeviceInfo;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.IntervalSetting;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.SystemVersion;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.capabilities.DeviceCapabilities;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.ResponseType;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.adapter.RetrievalType;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.AdapterMetadata;
@@ -71,7 +73,10 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	private AuthCookie authCookie;
 	/** Device information retrieved from {@link EndpointConstant#DEVICE_INFO}. */
 	private DeviceInfo deviceInfo;
+	/** Device capabilities retrieved from {@link EndpointConstant#DEVICE_CAPABILITIES}. */
 	private DeviceCapabilities deviceCapabilities;
+	/** System versions retrieved from {@link EndpointConstant#SYSTEM_VERSIONS}. */
+	private List<SystemVersion> systemVersions;
 
 	/** Indicates whether control properties are visible; defaults to false. */
 	private boolean isConfigManagement;
@@ -90,6 +95,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 		this.authCookie = new AuthCookie();
 		this.deviceInfo = new DeviceInfo();
 		this.deviceCapabilities = new DeviceCapabilities();
+		this.systemVersions = new ArrayList<>();
 
 		this.isConfigManagement = false;
 		this.displayPropertyGroups = new LinkedHashSet<>(Collections.singletonList(Constant.GENERAL_GROUP));
@@ -243,6 +249,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 		this.authCookie = null;
 		this.deviceInfo = null;
 		this.deviceCapabilities = null;
+		this.systemVersions = null;
 		this.displayPropertyGroups.clear();
 		this.retrievalIntervals.clear();
 		super.internalDestroy();
@@ -317,6 +324,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 					Capabilities.values(), Constant.CAPABILITIES_GROUP,
 					property -> MonitoringUtil.mapToCapabilities(this.deviceCapabilities, property)
 			));
+			statistics.putAll(MonitoringUtil.generateSystemVersionProperties(this.systemVersions));
 
 			extendedStatistics.setStatistics(statistics);
 			this.localExtendedStatistics = extendedStatistics;
@@ -373,6 +381,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 		this.authenticate();
 		this.deviceInfo = this.fetchData(EndpointConstant.DEVICE_INFO, ResponseType.DEVICE_INFO);
 		this.deviceCapabilities = this.fetchData(EndpointConstant.DEVICE_CAPABILITIES, ResponseType.DEVICE_CAPABILITIES);
+		this.systemVersions = this.fetchData(EndpointConstant.SYSTEM_VERSIONS, ResponseType.SYSTEM_VERSIONS);
 	}
 
 	/**
@@ -397,9 +406,11 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 		String responseClassName = responseType.getClazz().getSimpleName();
 		try {
 			String response = super.doGet(endpoint);
-			JsonNode responseNode = responseType.getPaths(this.objectMapper.readTree(response));
+			JsonNode responseNode = responseType.extractNode(this.objectMapper.readTree(response));
 			@SuppressWarnings("unchecked")
-			T mappedResponse = (T) this.objectMapper.treeToValue(responseNode, responseType.getClazz());
+			T mappedResponse = responseType.isCollection()
+					? (T) this.objectMapper.convertValue(responseNode, responseType.getTypeRef(this.objectMapper))
+					: (T) this.objectMapper.treeToValue(responseNode, responseType.getClazz());
 			if (Objects.isNull(mappedResponse)) {
 				this.logger.warn(String.format(Constant.FETCHED_DATA_NULL_WARNING, endpoint, responseClassName));
 			}

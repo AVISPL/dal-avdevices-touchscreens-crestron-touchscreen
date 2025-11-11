@@ -1,5 +1,5 @@
 /** Copyright (c) 2025 AVI-SPL, Inc. All Rights Reserved. */
-package com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models;
+package com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.capabilities;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
