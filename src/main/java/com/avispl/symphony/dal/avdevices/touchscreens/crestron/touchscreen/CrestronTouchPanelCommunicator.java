@@ -104,7 +104,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 		this.networkAdapters = new NetworkAdapters();
 
 		this.isConfigManagement = false;
-		this.displayPropertyGroups = new LinkedHashSet<>(Collections.singletonList(Constant.GENERAL_GROUP));
+		this.displayPropertyGroups = new LinkedHashSet<>(Set.of(Constant.GENERAL_GROUP));
 		this.retrievalIntervals = new EnumMap<>(RetrievalType.class);
 	}
 

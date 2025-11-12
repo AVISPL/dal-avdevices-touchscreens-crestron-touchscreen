@@ -15,36 +15,30 @@ import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.commo
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class DeviceInfo {
-	@JsonProperty("BuildDate")
-	private String buildDate;
 	@JsonProperty("DeviceVersion")
 	private String deviceVersion;
+	@JsonProperty("Category")
+	private String category;
+	@JsonProperty("DeviceId")
+	private String deviceId;
+	@JsonProperty("Devicekey")
+	private String deviceKey;
+	@JsonProperty("MacAddress")
+	private String macAddress;
+	@JsonProperty("Manufacturer")
+	private String manufacturer;
+	@JsonProperty("Model")
+	private String model;
 	@JsonProperty("ModelId")
 	private String modelId;
 	@JsonProperty("Name")
 	private String name;
-	@JsonProperty("PufVersion")
-	private String pufVersion;
+	@JsonProperty("RebootReason")
+	private String rebootReason;
 	@JsonProperty("SerialNumber")
 	private String serialNumber;
-
-	/**
-	 * Retrieves {@link #buildDate}
-	 *
-	 * @return value of {@link #buildDate}
-	 */
-	public String getBuildDate() {
-		return buildDate;
-	}
-
-	/**
-	 * Sets {@link #buildDate} value
-	 *
-	 * @param buildDate new value of {@link #buildDate}
-	 */
-	public void setBuildDate(String buildDate) {
-		this.buildDate = buildDate;
-	}
+	@JsonProperty("Version")
+	private String version;
 
 	/**
 	 * Retrieves {@link #deviceVersion}
@@ -62,6 +56,114 @@ public class DeviceInfo {
 	 */
 	public void setDeviceVersion(String deviceVersion) {
 		this.deviceVersion = deviceVersion;
+	}
+
+	/**
+	 * Retrieves {@link #category}
+	 *
+	 * @return value of {@link #category}
+	 */
+	public String getCategory() {
+		return category;
+	}
+
+	/**
+	 * Sets {@link #category} value
+	 *
+	 * @param category new value of {@link #category}
+	 */
+	public void setCategory(String category) {
+		this.category = category;
+	}
+
+	/**
+	 * Retrieves {@link #deviceId}
+	 *
+	 * @return value of {@link #deviceId}
+	 */
+	public String getDeviceId() {
+		return deviceId;
+	}
+
+	/**
+	 * Sets {@link #deviceId} value
+	 *
+	 * @param deviceId new value of {@link #deviceId}
+	 */
+	public void setDeviceId(String deviceId) {
+		this.deviceId = deviceId;
+	}
+
+	/**
+	 * Retrieves {@link #deviceKey}
+	 *
+	 * @return value of {@link #deviceKey}
+	 */
+	public String getDeviceKey() {
+		return deviceKey;
+	}
+
+	/**
+	 * Sets {@link #deviceKey} value
+	 *
+	 * @param deviceKey new value of {@link #deviceKey}
+	 */
+	public void setDeviceKey(String deviceKey) {
+		this.deviceKey = deviceKey;
+	}
+
+	/**
+	 * Retrieves {@link #macAddress}
+	 *
+	 * @return value of {@link #macAddress}
+	 */
+	public String getMacAddress() {
+		return macAddress;
+	}
+
+	/**
+	 * Sets {@link #macAddress} value
+	 *
+	 * @param macAddress new value of {@link #macAddress}
+	 */
+	public void setMacAddress(String macAddress) {
+		this.macAddress = macAddress;
+	}
+
+	/**
+	 * Retrieves {@link #manufacturer}
+	 *
+	 * @return value of {@link #manufacturer}
+	 */
+	public String getManufacturer() {
+		return manufacturer;
+	}
+
+	/**
+	 * Sets {@link #manufacturer} value
+	 *
+	 * @param manufacturer new value of {@link #manufacturer}
+	 */
+	public void setManufacturer(String manufacturer) {
+		this.manufacturer = manufacturer;
+	}
+
+	/**
+	 * Retrieves {@link #model}
+	 *
+	 * @return value of {@link #model}
+	 */
+	public String getModel() {
+		return model;
+	}
+
+	/**
+	 * Sets {@link #model} value
+	 *
+	 * @param model new value of {@link #model}
+	 */
+	public void setModel(String model) {
+		this.model = model;
 	}
 
 	/**
@@ -101,21 +203,21 @@ public class DeviceInfo {
 	}
 
 	/**
-	 * Retrieves {@link #pufVersion}
+	 * Retrieves {@link #rebootReason}
 	 *
-	 * @return value of {@link #pufVersion}
+	 * @return value of {@link #rebootReason}
 	 */
-	public String getPufVersion() {
-		return pufVersion;
+	public String getRebootReason() {
+		return rebootReason;
 	}
 
 	/**
-	 * Sets {@link #pufVersion} value
+	 * Sets {@link #rebootReason} value
 	 *
-	 * @param pufVersion new value of {@link #pufVersion}
+	 * @param rebootReason new value of {@link #rebootReason}
 	 */
-	public void setPufVersion(String pufVersion) {
-		this.pufVersion = pufVersion;
+	public void setRebootReason(String rebootReason) {
+		this.rebootReason = rebootReason;
 	}
 
 	/**
@@ -134,5 +236,23 @@ public class DeviceInfo {
 	 */
 	public void setSerialNumber(String serialNumber) {
 		this.serialNumber = serialNumber;
+	}
+
+	/**
+	 * Retrieves {@link #version}
+	 *
+	 * @return value of {@link #version}
+	 */
+	public String getVersion() {
+		return version;
+	}
+
+	/**
+	 * Sets {@link #version} value
+	 *
+	 * @param version new value of {@link #version}
+	 */
+	public void setVersion(String version) {
+		this.version = version;
 	}
 }

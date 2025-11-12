@@ -131,12 +131,18 @@ public final class MonitoringUtil {
 			return null;
 		}
 		return switch (general) {
-			case BUILD_DATE -> mapToValue(deviceInfo.getBuildDate());
+			case CATEGORY -> mapToValue(deviceInfo.getCategory());
+			case DEVICE_ID -> mapToValue(deviceInfo.getDeviceId());
+			case DEVICE_KEY -> mapToValue(deviceInfo.getDeviceKey());
 			case FIRMWARE_VERSION -> mapToValue(deviceInfo.getDeviceVersion());
 			case PRODUCT_ID -> mapToValue(deviceInfo.getModelId());
+			case MAC_ADDRESS -> mapToValue(deviceInfo.getMacAddress());
+			case MANUFACTURER -> mapToValue(deviceInfo.getManufacturer());
+			case MODEL -> mapToValue(deviceInfo.getModel());
 			case NAME -> mapToValue(deviceInfo.getName());
-			case PUF_VERSION -> mapToValue(deviceInfo.getPufVersion());
+			case REBOOT_REASON -> mapToValue(deviceInfo.getRebootReason());
 			case SERIAL_NUMBER -> mapToValue(deviceInfo.getSerialNumber());
+			case VERSION -> mapToValue(deviceInfo.getVersion());
 		};
 	}
 

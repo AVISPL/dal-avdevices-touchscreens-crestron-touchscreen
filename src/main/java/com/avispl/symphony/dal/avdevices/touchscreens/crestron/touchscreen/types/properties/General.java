@@ -12,12 +12,18 @@ import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.bases
  * @since 1.0.0
  */
 public enum General implements BaseProperty {
-	BUILD_DATE("BuildDate"),
+	CATEGORY("Category"),
+	DEVICE_ID("DeviceID"),
+	DEVICE_KEY("DeviceKey"),
 	FIRMWARE_VERSION("FirmwareVersion"),
+	MAC_ADDRESS("MACAddress"),
+	MANUFACTURER("Manufacturer"),
+	MODEL("Model"),
 	NAME("Name"),
 	PRODUCT_ID("ProductID"),
-	PUF_VERSION("PUFVersion"),
-	SERIAL_NUMBER("SerialNumber");
+	REBOOT_REASON("RebootReason"),
+	SERIAL_NUMBER("SerialNumber"),
+	VERSION("Version");
 
 	private final String name;
 
