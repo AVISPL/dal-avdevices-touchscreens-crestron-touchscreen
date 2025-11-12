@@ -22,9 +22,18 @@ import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.model
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.SystemVersion;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.capabilities.DeviceCapabilities;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.capabilities.PortConfig;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.network.NetworkAdapters;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.network.adapters.Adapters;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.network.adapters.AddressConfig;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.network.adapters.DnsSettings;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.network.adapters.IPv4;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.network.adapters.IPv6;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.network.adapters.LanAdapter;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.network.adapters.WifiAdapter;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.AdapterMetadata;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.Capabilities;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.General;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.Network;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.SystemVersions;
 import com.avispl.symphony.dal.util.StringUtils;
 
@@ -153,6 +162,33 @@ public final class MonitoringUtil {
 	}
 
 	/**
+	 * Generates network adapters property from device capabilities object. Returns empty property if null or all values unavailable.
+	 *
+	 * @param networkAdapters network adapters object
+	 * @return the Network property
+	 */
+	public static String mapToNetwork(NetworkAdapters networkAdapters, Network property) {
+		if (networkAdapters == null) {
+			LOGGER.warn("The networkAdapters is null, returning empty property");
+			return null;
+		}
+		return switch (property) {
+			case DNS_SERVERS -> mapToValue(String.join(Constant.COMMA, getIPv4(networkAdapters.getDnsSettings()).getDnsServers()));
+			case HOSTNAME -> mapToValue(networkAdapters.getHostName());
+			case IPV6_ENABLED -> mapToValue(Optional.ofNullable(networkAdapters.getIPv6()).orElse(new IPv6()).getSupported(), "Yes", "No");
+			case LAN_DEFAULT_GATEWAY -> mapToValue(getIPv4(networkAdapters.getAdapters()).getDefaultGateway());
+			case LAN_DHCP_ENABLED -> mapToValue(getIPv4(networkAdapters.getAdapters()).getDhcpEnabled(), "On", "Off");
+			case LAN_DOMAIN_NAME -> mapToValue(getEthernetLan(networkAdapters.getAdapters()).getDomainName());
+			case LAN_IP_ADDRESS -> mapToValue(getFirstAddress(networkAdapters.getAdapters()).getAddress());
+			case LAN_LINK_ACTIVE -> mapToValue(getEthernetLan(networkAdapters.getAdapters()).getLinkStatus());
+			case LAN_SUBNET_MASK -> mapToValue(getFirstAddress(networkAdapters.getAdapters()).getSubnetMask());
+			case WIFI_DOMAIN_NAME -> mapToValue(getWifi(networkAdapters.getAdapters()).getDomainName());
+			case WIFI_LINK_ACTIVE -> mapToValue(getWifi(networkAdapters.getAdapters()).getLinkStatus());
+			case WIFI_MAC_ADDRESS -> mapToValue(getWifi(networkAdapters.getAdapters()).getMacAddress());
+		};
+	}
+
+	/**
 	 * Generates system version property from device info object. Returns empty property if null or all values unavailable.
 	 *
 	 * @param systemVersion system version object
@@ -189,6 +225,65 @@ public final class MonitoringUtil {
 	}
 
 	/**
+	 * Safely retrieves the IPv4 configuration from a {@link DnsSettings} instance.
+	 *
+	 * @param dnsSettings the DNS settings object, may be {@code null}
+	 * @return the {@link IPv4} configuration if present, otherwise an empty {@link IPv4}
+	 */
+	private static IPv4 getIPv4(DnsSettings dnsSettings) {
+		return dnsSettings == null
+				? new IPv4()
+				: Optional.ofNullable(dnsSettings.getIPv4()).orElse(new IPv4());
+	}
+
+	/**
+	 * Safely retrieves the IPv4 configuration from the {@link Adapters}’s Ethernet LAN adapter.
+	 *
+	 * @param adapters the collection of network adapters, may be {@code null}
+	 * @return the {@link IPv4} configuration from Ethernet LAN, or an empty {@link IPv4} if unavailable
+	 */
+	private static IPv4 getIPv4(Adapters adapters) {
+		return adapters == null || adapters.getEthernetLan() == null
+				? new IPv4()
+				: Optional.ofNullable(adapters.getEthernetLan().getIPv4()).orElse(new IPv4());
+	}
+
+	/**
+	 * Safely retrieves the {@link LanAdapter} from {@link Adapters}.
+	 *
+	 * @param adapters the parent {@link Adapters} object, may be {@code null}
+	 * @return the {@link LanAdapter} if available, otherwise an empty {@link LanAdapter}
+	 */
+	private static LanAdapter getEthernetLan(Adapters adapters) {
+		return adapters == null
+				? new LanAdapter()
+				: Optional.ofNullable(adapters.getEthernetLan()).orElse(new LanAdapter());
+	}
+
+
+	/**
+	 * Safely retrieves the {@link WifiAdapter} from {@link Adapters}.
+	 *
+	 * @param adapters the parent {@link Adapters} object, may be {@code null}
+	 * @return the {@link WifiAdapter} if available, otherwise an empty {@link WifiAdapter}
+	 */
+	private static WifiAdapter getWifi(Adapters adapters) {
+		return adapters == null
+				? new WifiAdapter()
+				: Optional.ofNullable(adapters.getWifi()).orElse(new WifiAdapter());
+	}
+
+	/**
+	 * Retrieves the first {@link AddressConfig} from the IPv4 configuration within the given {@link Adapters} instance.
+	 *
+	 * @param adapters the {@link Adapters} object containing IPv4 address list, may be {@code null}
+	 * @return the first {@link AddressConfig} if present, otherwise an empty {@link AddressConfig}
+	 */
+	private static AddressConfig getFirstAddress(Adapters adapters) {
+		return Optional.ofNullable(getIPv4(adapters).getAddresses().get(0)).orElse(new AddressConfig());
+	}
+
+	/**
 	 * Maps the given value to a formatted String:
 	 * <ul>
 	 *   <li>If the value is a non-empty String, returns it in title case.</li>
@@ -215,6 +310,10 @@ public final class MonitoringUtil {
 		}
 
 		return Constant.NOT_AVAILABLE;
+	}
+
+	private static String mapToValue(Boolean value, String trueValue, String falseValue) {
+		return Objects.equals(Boolean.TRUE, value) ? mapToValue(trueValue) : mapToValue(falseValue);
 	}
 
 	/**

@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.DeviceInfo;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.SystemVersion;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.capabilities.DeviceCapabilities;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.network.NetworkAdapters;
 
 /**
  * Defines different response types and their associated model classes.
@@ -20,7 +21,8 @@ import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.model
 public enum ResponseType {
 	DEVICE_INFO(DeviceInfo.class),
 	DEVICE_CAPABILITIES(DeviceCapabilities.class),
-	SYSTEM_VERSIONS(SystemVersion.class);
+	SYSTEM_VERSIONS(SystemVersion.class),
+	NETWORK_ADAPTERS(NetworkAdapters.class);
 
 	private final Class<?> clazz;
 
@@ -45,20 +47,12 @@ public enum ResponseType {
 	 */
 	public JsonNode extractNode(JsonNode jsonNode) {
 		JsonNode root = jsonNode.path("Device");
-		switch (this) {
-			case DEVICE_INFO -> {
-				return root.path("DeviceInfo");
-			}
-			case DEVICE_CAPABILITIES -> {
-				return root.path("DeviceCapabilities");
-			}
-			case SYSTEM_VERSIONS -> {
-				return root.path("SystemVersions").path("Components");
-			}
-			default -> {
-				return root;
-			}
-		}
+		return switch (this) {
+			case DEVICE_INFO -> root.path("DeviceInfo");
+			case DEVICE_CAPABILITIES -> root.path("DeviceCapabilities");
+			case SYSTEM_VERSIONS -> root.path("SystemVersions").path("Components");
+			case NETWORK_ADAPTERS -> root.path("NetworkAdapters");
+		};
 	}
 
 	/**

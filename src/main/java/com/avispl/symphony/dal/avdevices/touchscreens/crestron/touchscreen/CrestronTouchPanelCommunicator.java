@@ -22,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpClientErrorException.Forbidden;
 import org.springframework.web.client.HttpClientErrorException.Unauthorized;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -43,11 +44,13 @@ import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.model
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.IntervalSetting;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.SystemVersion;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.capabilities.DeviceCapabilities;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.network.NetworkAdapters;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.ResponseType;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.adapter.RetrievalType;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.AdapterMetadata;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.Capabilities;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.General;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.Network;
 import com.avispl.symphony.dal.communicator.RestCommunicator;
 import com.avispl.symphony.dal.util.StringUtils;
 
@@ -77,6 +80,8 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	private DeviceCapabilities deviceCapabilities;
 	/** System versions retrieved from {@link EndpointConstant#SYSTEM_VERSIONS}. */
 	private List<SystemVersion> systemVersions;
+	/** Network adapters retrieved from {@link EndpointConstant#NETWORK_ADAPTERS}. */
+	private NetworkAdapters networkAdapters;
 
 	/** Indicates whether control properties are visible; defaults to false. */
 	private boolean isConfigManagement;
@@ -96,6 +101,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 		this.deviceInfo = new DeviceInfo();
 		this.deviceCapabilities = new DeviceCapabilities();
 		this.systemVersions = new ArrayList<>();
+		this.networkAdapters = new NetworkAdapters();
 
 		this.isConfigManagement = false;
 		this.displayPropertyGroups = new LinkedHashSet<>(Collections.singletonList(Constant.GENERAL_GROUP));
@@ -250,6 +256,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 		this.deviceInfo = null;
 		this.deviceCapabilities = null;
 		this.systemVersions = null;
+		this.networkAdapters = null;
 		this.displayPropertyGroups.clear();
 		this.retrievalIntervals.clear();
 		super.internalDestroy();
@@ -293,6 +300,8 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 			}
 		} catch (Unauthorized | Forbidden ex) {
 			throw new FailedLoginException(ex.getResponseBodyAsString());
+		} catch (ResourceAccessException ex) {
+			throw new ResourceNotReachableException(ex.getCause().getMessage(), ex);
 		}
 	}
 
@@ -325,6 +334,10 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 					property -> MonitoringUtil.mapToCapabilities(this.deviceCapabilities, property)
 			));
 			statistics.putAll(MonitoringUtil.generateSystemVersionProperties(this.systemVersions));
+			statistics.putAll(MonitoringUtil.generateProperties(
+					Network.values(), Constant.NETWORK_GROUP,
+					property -> MonitoringUtil.mapToNetwork(this.networkAdapters, property)
+			));
 
 			extendedStatistics.setStatistics(statistics);
 			this.localExtendedStatistics = extendedStatistics;
@@ -382,6 +395,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 		this.deviceInfo = this.fetchData(EndpointConstant.DEVICE_INFO, ResponseType.DEVICE_INFO);
 		this.deviceCapabilities = this.fetchData(EndpointConstant.DEVICE_CAPABILITIES, ResponseType.DEVICE_CAPABILITIES);
 		this.systemVersions = this.fetchData(EndpointConstant.SYSTEM_VERSIONS, ResponseType.SYSTEM_VERSIONS);
+		this.networkAdapters = this.fetchData(EndpointConstant.NETWORK_ADAPTERS, ResponseType.NETWORK_ADAPTERS);
 	}
 
 	/**
