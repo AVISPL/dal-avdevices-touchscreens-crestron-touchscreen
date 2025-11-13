@@ -2,6 +2,7 @@
 package com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.constants;
 
 import java.time.Duration;
+import java.util.regex.Pattern;
 
 import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty;
 import com.avispl.symphony.dal.util.ControllablePropertyFactory;
@@ -18,6 +19,7 @@ public final class Constant {
 
 	//	Formats
 	public static final String PROPERTY_FORMAT = "%s#%s";
+	public static final Pattern NON_ALPHANUMERIC_PATTERN = Pattern.compile("[^a-zA-Z0-9]");
 
 	//	Values
 	public static final String NOT_AVAILABLE = "N/A";
@@ -28,11 +30,15 @@ public final class Constant {
 
 	//	Special characters
 	public static final String COMMA = ",";
+	public static final String SPACE = " ";
+	public static final String EMPTY = "";
 
 	//	Groups
 	public static final String GENERAL_GROUP = "General";
 	public static final String ADAPTER_METADATA_GROUP = "AdapterMetadata";
 	public static final String CAPABILITIES_GROUP = "Capabilities";
+	public static final String SYSTEM_VERSIONS_GROUP = "SystemVersions";
+	public static final String NETWORK_GROUP = "Network";
 
 	//	Warning messages
 	public static final String CONTROLLABLE_PROPS_EMPTY_WARNING = "ControllableProperties list is null or empty, skipping control operation";
