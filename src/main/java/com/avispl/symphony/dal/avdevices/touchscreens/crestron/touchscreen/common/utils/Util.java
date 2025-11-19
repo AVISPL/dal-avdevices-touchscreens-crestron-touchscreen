@@ -1,3 +1,4 @@
+/** Copyright (c) 2025 AVI-SPL, Inc. All Rights Reserved. */
 package com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.utils;
 
 import java.util.Optional;
@@ -5,17 +6,23 @@ import java.util.Optional;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
-import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.capabilities.DeviceCapabilities;
-import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.capabilities.PortConfig;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.DeviceCapabilities;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.DeviceCapabilities.PortConfig;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.display.DeviceDisplay;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.display.Lcd;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.network.NetworkAdapters.DnsSettings;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.network.adapters.Adapters;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.network.adapters.Adapters.LanAdapter;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.network.adapters.Adapters.WifiAdapter;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.network.adapters.AddressConfig;
-import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.network.adapters.DnsSettings;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.network.adapters.IPv4;
-import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.network.adapters.LanAdapter;
-import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.network.adapters.WifiAdapter;
 
+/**
+ * Utility class providing helper methods.
+ *
+ * @author Kevin / Symphony Dev Team
+ * @since 1.0.0
+ */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class Util {
 	/**
@@ -93,25 +100,60 @@ public final class Util {
 	 * @return the first {@link AddressConfig} if present, otherwise an empty {@link AddressConfig}
 	 */
 	public static AddressConfig getFirstAddress(Adapters adapters) {
-		return Optional.ofNullable(getIPv4(adapters).getAddresses().get(0)).orElse(new AddressConfig());
+		return Optional.ofNullable(getIPv4(adapters).getAddressConfigs().get(0)).orElse(new AddressConfig());
 	}
 
+	/**
+	 * Returns the {@link Lcd} section of the given {@link DeviceDisplay}, or a new {@link Lcd} instance if none is present.
+	 *
+	 * @param display the display object; may be null
+	 * @return the existing Lcd instance or a new one if missing
+	 */
 	public static Lcd getLcd(DeviceDisplay display) {
 		return Optional.ofNullable(display.getLcd()).orElse(new Lcd());
 	}
 
+	/**
+	 * Returns the {@link Lcd.AutoBrightness} section of the given {@link DeviceDisplay},
+	 * or a new {@link Lcd.AutoBrightness} instance if none is present.
+	 *
+	 * @param display the display object; may be null
+	 * @return the existing AutoBrightness instance or a new one if missing
+	 */
 	public static Lcd.AutoBrightness getLcdAutoBrightness(DeviceDisplay display) {
 		return Optional.ofNullable(getLcd(display).getAutoBrightness()).orElse(new Lcd.AutoBrightness());
 	}
 
+	/**
+	 * Returns the {@link Lcd.Presets} section of the given {@link DeviceDisplay},
+	 * or a new {@link Lcd.Presets} instance if none is present.
+	 *
+	 * @param display the display object; may be null
+	 * @return the existing Presets instance or a new one if missing
+	 */
 	public static Lcd.Presets getLcdPresets(DeviceDisplay display) {
 		return Optional.ofNullable(getLcd(display).getPresets()).orElse(new Lcd.Presets());
 	}
 
+	/**
+	 * Returns the {@link DeviceDisplay.Audio} section of the display,
+	 * or a new {@link DeviceDisplay.Audio} instance if none is present.
+	 *
+	 * @param display the display object; may be null
+	 * @return the existing Audio instance or a new one if missing
+	 */
 	public static DeviceDisplay.Audio getDisplayAudio(DeviceDisplay display) {
 		return Optional.ofNullable(display.getAudio()).orElse(new DeviceDisplay.Audio());
 	}
 
+
+	/**
+	 * Returns the {@link DeviceDisplay.VirtualButtons} section of the display,
+	 * or a new {@link DeviceDisplay.VirtualButtons} instance if none is present.
+	 *
+	 * @param display the display object; may be null
+	 * @return the existing VirtualButtons instance or a new one if missing
+	 */
 	public static DeviceDisplay.VirtualButtons getDisplayButtonToolbar(DeviceDisplay display) {
 		return Optional.ofNullable(display.getVirtualButtons()).orElse(new DeviceDisplay.VirtualButtons());
 	}

@@ -20,9 +20,9 @@ import org.apache.commons.logging.LogFactory;
 
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.bases.BaseProperty;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.constants.Constant;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.DeviceCapabilities;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.DeviceInfo;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.SystemVersion;
-import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.capabilities.DeviceCapabilities;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.display.DeviceDisplay;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.display.DeviceDisplay.Audio;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.display.DeviceDisplay.VirtualButtons;
@@ -314,8 +314,8 @@ public final class MonitoringUtil {
 			return null;
 		}
 		return switch (property) {
-			case CONFIG_FILE_UPLOAD_SUPPORTED -> mapToValue(capabilities.getConfigFileUploadSupported());
-			case LOG_FILE_UPLOAD_SUPPORTED -> mapToValue(capabilities.getLogFileUploadSupported());
+			case CONFIG_FILE_UPLOAD_SUPPORTED -> mapToValue(capabilities.getIsConfigFileUploadSupported());
+			case LOG_FILE_UPLOAD_SUPPORTED -> mapToValue(capabilities.getIsLogFileUploadSupported());
 			case PC_NUMBER_OF_DM_INPUT -> mapToValue(Util.getPortConfig(capabilities).getNumberOfDmInputs());
 			case PC_NUMBER_OF_ETHERNET_ADAPTERS -> mapToValue(Util.getPortConfig(capabilities).getNumberOfEthernetAdapters());
 			case PC_NUMBER_OF_HDMI_INPUTS -> mapToValue(Util.getPortConfig(capabilities).getNumberOfHdmiInputs());
@@ -339,7 +339,7 @@ public final class MonitoringUtil {
 			case HOSTNAME -> mapToValue(networkAdapters.getHostName());
 			case IPV6_ENABLED -> mapToValue(Optional.ofNullable(networkAdapters.getIPv6()).orElse(new IPv6()).getSupported(), "Yes", "No");
 			case LAN_DEFAULT_GATEWAY -> mapToValue(Util.getIPv4(networkAdapters.getAdapters()).getDefaultGateway());
-			case LAN_DHCP_ENABLED -> mapToValue(Util.getIPv4(networkAdapters.getAdapters()).getDhcpEnabled(), Constant.ON, Constant.OFF);
+			case LAN_DHCP_ENABLED -> mapToValue(Util.getIPv4(networkAdapters.getAdapters()).getIsDhcpEnabled(), Constant.ON, Constant.OFF);
 			case LAN_DOMAIN_NAME -> mapToValue(Util.getEthernetLan(networkAdapters.getAdapters()).getDomainName());
 			case LAN_IP_ADDRESS -> mapToValue(Util.getFirstAddress(networkAdapters.getAdapters()).getAddress());
 			case LAN_LINK_ACTIVE -> mapToValue(Util.getEthernetLan(networkAdapters.getAdapters()).getLinkStatus());
