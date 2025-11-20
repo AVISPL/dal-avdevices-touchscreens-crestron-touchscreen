@@ -11,6 +11,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
@@ -38,6 +39,7 @@ import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.api.dal.dto.monitor.Statistics;
 import com.avispl.symphony.api.dal.error.ResourceNotReachableException;
 import com.avispl.symphony.api.dal.monitor.Monitorable;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.RequestStateHandler;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.constants.Constant;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.constants.EndpointConstant;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.utils.ControlUtil;
@@ -70,6 +72,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	private final ReentrantLock reentrantLock;
 	/** Object mapper used to convert JSON responses into Java objects. */
 	private final ObjectMapper objectMapper;
+	private final RequestStateHandler requestStateHandler;
 
 	/** Device adapter instantiation timestamp. */
 	private final long adapterInitializationTimestamp;
@@ -100,6 +103,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	public CrestronTouchPanelCommunicator() {
 		this.reentrantLock = new ReentrantLock();
 		this.objectMapper = new ObjectMapper();
+		this.requestStateHandler = new RequestStateHandler();
 
 		this.adapterInitializationTimestamp = System.currentTimeMillis();
 		this.versionProperties = new Properties();
@@ -260,6 +264,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	protected void internalDestroy() {
 		this.versionProperties.clear();
 		this.localExtendedStatistics = null;
+		this.requestStateHandler.clear();
 		this.authCookie = null;
 		this.deviceInfo = null;
 		this.deviceCapabilities = null;
@@ -349,11 +354,8 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 			));
 			statistics.putAll(MonitoringUtil.generateDisplayProperties(this.deviceDisplay));
 
-			List<AdvancedControllableProperty> controllableProperties = new ArrayList<>();
-			controllableProperties.addAll(ControlUtil.generateDisplayControllers(this.deviceDisplay));
-			if (controllableProperties.isEmpty()) {
-				controllableProperties.add(Constant.DUMMY_CONTROLLER);
-			}
+			List<AdvancedControllableProperty> controllableProperties = Optional.of(ControlUtil.generateDisplayControllers(this.deviceDisplay))
+					.filter(list -> !list.isEmpty()).orElseGet(() -> Collections.singletonList(Constant.DUMMY_CONTROLLER));
 
 			extendedStatistics.setStatistics(statistics);
 			extendedStatistics.setControllableProperties(controllableProperties);
@@ -417,11 +419,13 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	 */
 	private void setupData() throws Exception {
 		this.authenticate();
+		this.requestStateHandler.clear();
 		this.deviceInfo = this.fetchData(EndpointConstant.DEVICE_INFO, ResponseType.DEVICE_INFO);
 		this.deviceCapabilities = this.fetchData(EndpointConstant.DEVICE_CAPABILITIES, ResponseType.DEVICE_CAPABILITIES);
 		this.systemVersions = this.fetchData(EndpointConstant.SYSTEM_VERSIONS, ResponseType.SYSTEM_VERSIONS);
 		this.networkAdapters = this.fetchData(EndpointConstant.NETWORK_ADAPTERS, ResponseType.NETWORK_ADAPTERS);
 		this.deviceDisplay = this.fetchData(EndpointConstant.DISPLAY, ResponseType.DISPLAY);
+		this.requestStateHandler.verifyState();
 	}
 
 	/**
@@ -445,6 +449,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	public <T> T fetchData(String endpoint, ResponseType responseType) throws FailedLoginException {
 		String responseClassName = responseType.getClazz().getSimpleName();
 		try {
+			this.requestStateHandler.pushRequest(endpoint);
 			String response = super.doGet(endpoint);
 			JsonNode responseNode = responseType.extractNode(this.objectMapper.readTree(response));
 			@SuppressWarnings("unchecked")
@@ -454,12 +459,14 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 			if (Objects.isNull(mappedResponse)) {
 				this.logger.warn(String.format(Constant.FETCHED_DATA_NULL_WARNING, endpoint, responseClassName));
 			}
+			this.requestStateHandler.resolve(endpoint);
 
 			return mappedResponse;
 		} catch (FailedLoginException | ResourceNotReachableException e) {
 			throw e;
 		} catch (Exception e) {
-			this.logger.error(String.format(Constant.FETCH_DATA_FAILED, endpoint, responseClassName), e);
+			this.requestStateHandler.push(endpoint, e);
+			this.logger.error(Constant.FETCH_DATA_FAILED.formatted(endpoint, responseClassName), e);
 			return null;
 		}
 	}
