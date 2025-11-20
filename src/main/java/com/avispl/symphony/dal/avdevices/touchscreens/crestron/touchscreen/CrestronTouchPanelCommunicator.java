@@ -368,14 +368,13 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	public void controlProperty(ControllableProperty controllableProperty) throws Exception {
 		this.reentrantLock.lock();
 		try {
-			String[] components = controllableProperty.getProperty().split(Constant.ASTERISK);
+			String[] components = controllableProperty.getProperty().split(Constant.HASH);
 			if (!Constant.DISPLAY_GROUP.equals(components[0])) {
 				throw new InvalidArgumentException("Unsupported group %s to control".formatted(components[0]));
 			}
 			Display display = Display.getByName(components[1])
 					.orElseThrow(() -> new InvalidArgumentException("Unsupported property %s to control".formatted(controllableProperty.getProperty())));
 			Map<String, Object> body = ControlUtil.buildDisplayRequest(display, controllableProperty.getValue());
-			this.logger.info(body);
 			this.doPost(EndpointConstant.DISPLAY, body);
 		} finally {
 			this.reentrantLock.unlock();

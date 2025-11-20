@@ -390,20 +390,20 @@ public final class MonitoringUtil {
 	 *     </ul>
 	 *   </li>
 	 *   <li>For {@link Boolean} or {@link Integer}, returns their string value.</li>
-	 *   <li>Returns {@code Constant.NOT_AVAILABLE} for null or unsupported types.</li>
+	 *   <li>Returns {@code null} or unsupported types.</li>
 	 * </ul>
 	 *
 	 * @param value the value to map
 	 * @param isTitleCase whether normal string values should be converted to title case
-	 * @return the mapped string, or {@code Constant.NOT_AVAILABLE} if unavailable
+	 * @return the mapped string, or {@code null} if unavailable
 	 */
 	private static String mapToValue(Object value, boolean isTitleCase) {
 		if (value == null) {
-			return Constant.NOT_AVAILABLE;
+			return null;
 		}
 		if (value instanceof String str) {
 			if (StringUtils.isNullOrEmpty(str)) {
-				return Constant.NOT_AVAILABLE;
+				return null;
 			}
 			if ("true".equalsIgnoreCase(str) || "false".equalsIgnoreCase(str)) {
 				return str.toLowerCase();
@@ -414,7 +414,7 @@ public final class MonitoringUtil {
 			return value.toString();
 		}
 
-		return Constant.NOT_AVAILABLE;
+		return null;
 	}
 
 	/**
