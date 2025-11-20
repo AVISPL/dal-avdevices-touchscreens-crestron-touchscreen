@@ -35,7 +35,7 @@ public final class Constant {
 	public static final String COMMA = ",";
 	public static final String SPACE = " ";
 	public static final String EMPTY = "";
-	public static final String ASTERISK = "#";
+	public static final String HASH = "#";
 
 	//	Groups
 	public static final String GENERAL_GROUP = "General";

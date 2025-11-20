@@ -340,11 +340,11 @@ public final class MonitoringUtil {
 			case IPV6_ENABLED -> mapToValue(Optional.ofNullable(networkAdapters.getIPv6()).orElse(new IPv6()).getSupported(), "Yes", "No");
 			case LAN_DEFAULT_GATEWAY -> mapToValue(Util.getIPv4(networkAdapters.getAdapters()).getDefaultGateway());
 			case LAN_DHCP_ENABLED -> mapToValue(Util.getIPv4(networkAdapters.getAdapters()).getIsDhcpEnabled(), Constant.ON, Constant.OFF);
-			case LAN_DOMAIN_NAME -> mapToValue(Util.getEthernetLan(networkAdapters.getAdapters()).getDomainName());
+			case LAN_DOMAIN_NAME -> mapToValue(Util.getEthernetLan(networkAdapters.getAdapters()).getDomainName(), false);
 			case LAN_IP_ADDRESS -> mapToValue(Util.getFirstAddress(networkAdapters.getAdapters()).getAddress());
 			case LAN_LINK_ACTIVE -> mapToValue(Util.getEthernetLan(networkAdapters.getAdapters()).getLinkStatus());
 			case LAN_SUBNET_MASK -> mapToValue(Util.getFirstAddress(networkAdapters.getAdapters()).getSubnetMask());
-			case WIFI_DOMAIN_NAME -> mapToValue(Util.getWifi(networkAdapters.getAdapters()).getDomainName());
+			case WIFI_DOMAIN_NAME -> mapToValue(Util.getWifi(networkAdapters.getAdapters()).getDomainName(), false);
 			case WIFI_LINK_ACTIVE -> mapToValue(Util.getWifi(networkAdapters.getAdapters()).getLinkStatus());
 			case WIFI_MAC_ADDRESS -> mapToValue(Util.getWifi(networkAdapters.getAdapters()).getMacAddress());
 		};
@@ -368,34 +368,64 @@ public final class MonitoringUtil {
 	}
 
 	/**
-	 * Maps the given value to a formatted String:
-	 * <ul>
-	 *   <li>If the value is a non-empty String, returns it in title case.</li>
-	 *   <li>If the value is "true" or "false" (case-insensitive), returns it in lowercase.</li>
-	 *   <li>If the value is a Boolean or Integer, returns its string representation.</li>
-	 *   <li>Returns {@code Constant.NOT_AVAILABLE} if the value is null or empty.</li>
-	 * </ul>
+	 * Maps the given value to a formatted string using title case for normal text.
+	 * <p>
+	 * Delegates to {@link #mapToValue(Object, boolean)} with {@code isTitleCase = true}.
+	 * </p>
 	 *
 	 * @param value the input value to map
-	 * @return the mapped String value, or {@code Constant.NOT_AVAILABLE} if unavailable
+	 * @return the mapped string, or {@code Constant.NOT_AVAILABLE} if unavailable
 	 */
 	private static String mapToValue(Object value) {
+		return mapToValue(value, true);
+	}
+
+	/**
+	 * Maps the given value to a formatted string based on its type:
+	 * <ul>
+	 *   <li>For non-empty strings:
+	 *     <ul>
+	 *       <li>Returns "true" / "false" in lowercase if the value represents a boolean.</li>
+	 *       <li>Returns title-cased or raw text depending on {@code isTitleCase}.</li>
+	 *     </ul>
+	 *   </li>
+	 *   <li>For {@link Boolean} or {@link Integer}, returns their string value.</li>
+	 *   <li>Returns {@code null} or unsupported types.</li>
+	 * </ul>
+	 *
+	 * @param value the value to map
+	 * @param isTitleCase whether normal string values should be converted to title case
+	 * @return the mapped string, or {@code null} if unavailable
+	 */
+	private static String mapToValue(Object value, boolean isTitleCase) {
 		if (value == null) {
-			return Constant.NOT_AVAILABLE;
+			return null;
 		}
 		if (value instanceof String str) {
+			if (StringUtils.isNullOrEmpty(str)) {
+				return null;
+			}
 			if ("true".equalsIgnoreCase(str) || "false".equalsIgnoreCase(str)) {
 				return str.toLowerCase();
 			}
-			return StringUtils.isNotNullOrEmpty(str) ? toTitleCase(str) : Constant.NOT_AVAILABLE;
+			return isTitleCase ? toTitleCase(str) : str;
 		}
 		if (value instanceof Boolean || value instanceof Integer) {
 			return value.toString();
 		}
 
-		return Constant.NOT_AVAILABLE;
+		return null;
 	}
 
+	/**
+	 * Maps a {@link Boolean} to either the given {@code trueValue} or {@code falseValue},
+	 * using {@link #mapToValue(Object)} to normalize the output format.
+	 *
+	 * @param value      the boolean value to evaluate; null is treated as {@code false}
+	 * @param trueValue  the string to use when {@code value} is {@code true}
+	 * @param falseValue the string to use when {@code value} is not {@code true}
+	 * @return the mapped string produced from either {@code trueValue} or {@code falseValue}
+	 */
 	private static String mapToValue(Boolean value, String trueValue, String falseValue) {
 		return Objects.equals(Boolean.TRUE, value) ? mapToValue(trueValue) : mapToValue(falseValue);
 	}
