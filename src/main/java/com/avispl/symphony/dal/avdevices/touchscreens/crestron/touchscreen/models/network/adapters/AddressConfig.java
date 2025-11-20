@@ -3,6 +3,7 @@ package com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.mode
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Getter;
 
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.constants.EndpointConstant;
 
@@ -14,45 +15,10 @@ import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.commo
  * @since 1.0.0
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
+@Getter
 public class AddressConfig {
 	@JsonProperty("Address")
 	private String address;
 	@JsonProperty("SubnetMask")
 	private String subnetMask;
-
-	/**
-	 * Retrieves {@link #address}
-	 *
-	 * @return value of {@link #address}
-	 */
-	public String getAddress() {
-		return address;
-	}
-
-	/**
-	 * Sets {@link #address} value
-	 *
-	 * @param address new value of {@link #address}
-	 */
-	public void setAddress(String address) {
-		this.address = address;
-	}
-
-	/**
-	 * Retrieves {@link #subnetMask}
-	 *
-	 * @return value of {@link #subnetMask}
-	 */
-	public String getSubnetMask() {
-		return subnetMask;
-	}
-
-	/**
-	 * Sets {@link #subnetMask} value
-	 *
-	 * @param subnetMask new value of {@link #subnetMask}
-	 */
-	public void setSubnetMask(String subnetMask) {
-		this.subnetMask = subnetMask;
-	}
 }

@@ -3,6 +3,8 @@
  */
 package com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models;
 
+import lombok.Getter;
+
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.constants.Constant;
 
 /**
@@ -11,6 +13,7 @@ import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.commo
  * @author Kevin / Symphony Dev Team
  * @since 1.0.0
  */
+@Getter
 public class IntervalSetting {
 	private final long intervalMs;
 	private long validRetrievalTimestamp;
@@ -23,15 +26,6 @@ public class IntervalSetting {
 	public IntervalSetting(long intervalMs) {
 		this.intervalMs = Math.max(Constant.DEFAULT_INTERVAL_MS, intervalMs);
 		this.validRetrievalTimestamp = System.currentTimeMillis() + this.intervalMs;
-	}
-
-	/**
-	 * Retrieves {@link #intervalMs}
-	 *
-	 * @return value of {@link #intervalMs}
-	 */
-	public long getIntervalMs() {
-		return intervalMs;
 	}
 
 	/**

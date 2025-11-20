@@ -30,7 +30,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import javax.security.auth.login.FailedLoginException;
 import org.apache.commons.collections.CollectionUtils;
 
+import com.avispl.symphony.api.common.error.InvalidArgumentException;
 import com.avispl.symphony.api.dal.control.Controller;
+import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty;
 import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
 import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.api.dal.dto.monitor.Statistics;
@@ -38,17 +40,20 @@ import com.avispl.symphony.api.dal.error.ResourceNotReachableException;
 import com.avispl.symphony.api.dal.monitor.Monitorable;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.constants.Constant;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.constants.EndpointConstant;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.utils.ControlUtil;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.utils.MonitoringUtil;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.AuthCookie;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.DeviceCapabilities;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.DeviceInfo;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.IntervalSetting;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.SystemVersion;
-import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.capabilities.DeviceCapabilities;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.display.DeviceDisplay;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.network.NetworkAdapters;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.ResponseType;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.adapter.RetrievalType;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.AdapterMetadata;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.Capabilities;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.Display;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.General;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.Network;
 import com.avispl.symphony.dal.communicator.RestCommunicator;
@@ -82,6 +87,8 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	private List<SystemVersion> systemVersions;
 	/** Network adapters retrieved from {@link EndpointConstant#NETWORK_ADAPTERS}. */
 	private NetworkAdapters networkAdapters;
+	/** Display retrieved from {@link EndpointConstant#DISPLAY}. */
+	private DeviceDisplay deviceDisplay;
 
 	/** Indicates whether control properties are visible; defaults to false. */
 	private boolean isConfigManagement;
@@ -102,6 +109,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 		this.deviceCapabilities = new DeviceCapabilities();
 		this.systemVersions = new ArrayList<>();
 		this.networkAdapters = new NetworkAdapters();
+		this.deviceDisplay = new DeviceDisplay();
 
 		this.isConfigManagement = false;
 		this.displayPropertyGroups = new LinkedHashSet<>(Set.of(Constant.GENERAL_GROUP));
@@ -257,6 +265,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 		this.deviceCapabilities = null;
 		this.systemVersions = null;
 		this.networkAdapters = null;
+		this.deviceDisplay = null;
 		this.displayPropertyGroups.clear();
 		this.retrievalIntervals.clear();
 		super.internalDestroy();
@@ -338,8 +347,16 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 					Network.values(), Constant.NETWORK_GROUP,
 					property -> MonitoringUtil.mapToNetwork(this.networkAdapters, property)
 			));
+			statistics.putAll(MonitoringUtil.generateDisplayProperties(this.deviceDisplay));
+
+			List<AdvancedControllableProperty> controllableProperties = new ArrayList<>();
+			controllableProperties.addAll(ControlUtil.generateDisplayControllers(this.deviceDisplay));
+			if (controllableProperties.isEmpty()) {
+				controllableProperties.add(Constant.DUMMY_CONTROLLER);
+			}
 
 			extendedStatistics.setStatistics(statistics);
+			extendedStatistics.setControllableProperties(controllableProperties);
 			this.localExtendedStatistics = extendedStatistics;
 		} finally {
 			this.reentrantLock.unlock();
@@ -351,7 +368,14 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	public void controlProperty(ControllableProperty controllableProperty) throws Exception {
 		this.reentrantLock.lock();
 		try {
-			System.out.println("Empty method");
+			String[] components = controllableProperty.getProperty().split(Constant.HASH);
+			if (!Constant.DISPLAY_GROUP.equals(components[0])) {
+				throw new InvalidArgumentException("Unsupported group %s to control".formatted(components[0]));
+			}
+			Display display = Display.getByName(components[1])
+					.orElseThrow(() -> new InvalidArgumentException("Unsupported property %s to control".formatted(controllableProperty.getProperty())));
+			Map<String, Object> body = ControlUtil.buildDisplayRequest(display, controllableProperty.getValue());
+			this.doPost(EndpointConstant.DISPLAY, body);
 		} finally {
 			this.reentrantLock.unlock();
 		}
@@ -396,6 +420,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 		this.deviceCapabilities = this.fetchData(EndpointConstant.DEVICE_CAPABILITIES, ResponseType.DEVICE_CAPABILITIES);
 		this.systemVersions = this.fetchData(EndpointConstant.SYSTEM_VERSIONS, ResponseType.SYSTEM_VERSIONS);
 		this.networkAdapters = this.fetchData(EndpointConstant.NETWORK_ADAPTERS, ResponseType.NETWORK_ADAPTERS);
+		this.deviceDisplay = this.fetchData(EndpointConstant.DISPLAY, ResponseType.DISPLAY);
 	}
 
 	/**

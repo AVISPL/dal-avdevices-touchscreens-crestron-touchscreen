@@ -4,6 +4,9 @@ package com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.comm
 import java.time.Duration;
 import java.util.regex.Pattern;
 
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+
 import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty;
 import com.avispl.symphony.dal.util.ControllablePropertyFactory;
 
@@ -13,10 +16,8 @@ import com.avispl.symphony.dal.util.ControllablePropertyFactory;
  * @author Kevin / Symphony Dev Team
  * @since 1.0.0
  */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class Constant {
-	private Constant() {
-	}
-
 	//	Formats
 	public static final String PROPERTY_FORMAT = "%s#%s";
 	public static final Pattern NON_ALPHANUMERIC_PATTERN = Pattern.compile("[^a-zA-Z0-9]");
@@ -27,11 +28,14 @@ public final class Constant {
 	public static final long DEFAULT_INTERVAL_MS = Duration.ofSeconds(30).toMillis();
 	public static final String CREST_XSRF_TOKEN_HEADER = "CREST-XSRF-TOKEN";
 	public static final String X_CREST_XSRF_TOKEN_HEADER = "X-CREST-XSRF-TOKEN";
+	public static final String ON = "On";
+	public static final String OFF = "Off";
 
 	//	Special characters
 	public static final String COMMA = ",";
 	public static final String SPACE = " ";
 	public static final String EMPTY = "";
+	public static final String HASH = "#";
 
 	//	Groups
 	public static final String GENERAL_GROUP = "General";
@@ -39,6 +43,10 @@ public final class Constant {
 	public static final String CAPABILITIES_GROUP = "Capabilities";
 	public static final String SYSTEM_VERSIONS_GROUP = "SystemVersions";
 	public static final String NETWORK_GROUP = "Network";
+	public static final String DISPLAY_GROUP = "Display";
+	public static final String LCD_DISPLAY_GROUP = "LCD";
+	public static final String AUDIO_DISPLAY_GROUP = "Audio";
+	public static final String BUTTON_TOOLBAR_DISPLAY_GROUP = "ButtonToolbar";
 
 	//	Warning messages
 	public static final String CONTROLLABLE_PROPS_EMPTY_WARNING = "ControllableProperties list is null or empty, skipping control operation";
