@@ -3,7 +3,9 @@ package com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.mode
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Getter;
 
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.bases.BaseAdapter;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.constants.EndpointConstant;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.network.NetworkAdapters;
 
@@ -15,6 +17,7 @@ import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.model
  * @since 1.0.0
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
+@Getter
 public class Adapters {
 	@JsonProperty("EthernetLan")
 	private LanAdapter ethernetLan;
@@ -22,39 +25,13 @@ public class Adapters {
 	@JsonProperty("Wifi")
 	private WifiAdapter wifi;
 
-	/**
-	 * Retrieves {@link #ethernetLan}
-	 *
-	 * @return value of {@link #ethernetLan}
-	 */
-	public LanAdapter getEthernetLan() {
-		return ethernetLan;
+	@JsonIgnoreProperties(ignoreUnknown = true)
+	@Getter
+	public static class LanAdapter extends BaseAdapter {
+		@JsonProperty("IPv4")
+		private IPv4 iPv4;
 	}
 
-	/**
-	 * Sets {@link #ethernetLan} value
-	 *
-	 * @param ethernetLan new value of {@link #ethernetLan}
-	 */
-	public void setEthernetLan(LanAdapter ethernetLan) {
-		this.ethernetLan = ethernetLan;
-	}
-
-	/**
-	 * Retrieves {@link #wifi}
-	 *
-	 * @return value of {@link #wifi}
-	 */
-	public WifiAdapter getWifi() {
-		return wifi;
-	}
-
-	/**
-	 * Sets {@link #wifi} value
-	 *
-	 * @param wifi new value of {@link #wifi}
-	 */
-	public void setWifi(WifiAdapter wifi) {
-		this.wifi = wifi;
+	public static class WifiAdapter extends BaseAdapter {
 	}
 }

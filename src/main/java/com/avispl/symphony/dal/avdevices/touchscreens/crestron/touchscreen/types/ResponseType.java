@@ -6,10 +6,12 @@ import java.util.List;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Getter;
 
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.DeviceCapabilities;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.DeviceInfo;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.SystemVersion;
-import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.capabilities.DeviceCapabilities;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.display.DeviceDisplay;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.network.NetworkAdapters;
 
 /**
@@ -18,25 +20,18 @@ import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.model
  * @author Kevin / Symphony Dev Team
  * @since 1.0.0
  */
+@Getter
 public enum ResponseType {
 	DEVICE_INFO(DeviceInfo.class),
 	DEVICE_CAPABILITIES(DeviceCapabilities.class),
 	SYSTEM_VERSIONS(SystemVersion.class),
-	NETWORK_ADAPTERS(NetworkAdapters.class);
+	NETWORK_ADAPTERS(NetworkAdapters.class),
+	DISPLAY(DeviceDisplay.class);
 
 	private final Class<?> clazz;
 
 	ResponseType(Class<?> clazz) {
 		this.clazz = clazz;
-	}
-
-	/**
-	 * Retrieves {@link #clazz}
-	 *
-	 * @return value of {@link #clazz}
-	 */
-	public Class<?> getClazz() {
-		return clazz;
 	}
 
 	/**
@@ -52,6 +47,7 @@ public enum ResponseType {
 			case DEVICE_CAPABILITIES -> root.path("DeviceCapabilities");
 			case SYSTEM_VERSIONS -> root.path("SystemVersions").path("Components");
 			case NETWORK_ADAPTERS -> root.path("NetworkAdapters");
+			case DISPLAY -> root.path("Display");
 		};
 	}
 
