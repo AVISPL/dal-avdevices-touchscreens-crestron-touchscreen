@@ -19,8 +19,6 @@ import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.commo
 @Getter
 @NoArgsConstructor
 public class SystemVersion {
-	@JsonProperty("Category")
-	private String category;
 	@JsonProperty("Name")
 	private String name;
 	@JsonProperty("Version")
