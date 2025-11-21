@@ -89,15 +89,15 @@ public final class MonitoringUtil {
 		if (CollectionUtils.isEmpty(systemVersions)) {
 			return Collections.emptyMap();
 		}
-		SystemVersions[] versionProps = SystemVersions.values();
 		Map<String, String> properties = new HashMap<>();
-		systemVersions.forEach(systemVersion -> {
-			String prefixName = toTitleCase(Constant.NON_ALPHANUMERIC_PATTERN.matcher(systemVersion.getName()).replaceAll(Constant.EMPTY));
-			Arrays.stream(versionProps).forEach(property -> properties.put(
-					String.format(Constant.PROPERTY_FORMAT, Constant.SYSTEM_VERSIONS_GROUP, prefixName + property.getName()),
-					Optional.ofNullable(mapToSystemVersion(systemVersion, property)).orElse(Constant.NOT_AVAILABLE)
-			));
-		});
+		for (SystemVersion systemVersion : systemVersions) {
+			String prefix = toTitleCase(Constant.NON_ALPHANUMERIC_PATTERN.matcher(systemVersion.getName()).replaceAll(Constant.EMPTY));
+			if (prefix != null) {
+				String versionValue = Optional.ofNullable(mapToSystemVersion(systemVersion, SystemVersions.VERSION)).orElse(Constant.NOT_AVAILABLE);
+				String versionKey = prefix.endsWith(SystemVersions.VERSION.getName()) || isBooleanValue(versionValue) ? prefix : prefix + SystemVersions.VERSION.getName();
+				properties.put(Constant.PROPERTY_FORMAT.formatted(Constant.SYSTEM_VERSIONS_GROUP, versionKey), versionValue);
+			}
+		}
 		return properties;
 	}
 
@@ -362,7 +362,6 @@ public final class MonitoringUtil {
 			return null;
 		}
 		return switch (property) {
-			case CATEGORY -> mapToValue(systemVersion.getCategory());
 			case VERSION -> mapToValue(systemVersion.getVersion());
 		};
 	}
@@ -405,7 +404,7 @@ public final class MonitoringUtil {
 			if (StringUtils.isNullOrEmpty(str)) {
 				return null;
 			}
-			if ("true".equalsIgnoreCase(str) || "false".equalsIgnoreCase(str)) {
+			if (isBooleanValue(str)) {
 				return str.toLowerCase();
 			}
 			return isTitleCase ? toTitleCase(str) : str;
@@ -445,7 +444,7 @@ public final class MonitoringUtil {
 		if (StringUtils.isNullOrEmpty(value) || value.equals("null")) {
 			return null;
 		}
-		if (value.equals("true") || value.equals("false")) {
+		if (isBooleanValue(value)) {
 			return value;
 		}
 
@@ -515,5 +514,9 @@ public final class MonitoringUtil {
 			LOGGER.error(Constant.MAP_TO_UPTIME_MIN_FAILED + uptime, e);
 			return null;
 		}
+	}
+
+	private static boolean isBooleanValue(String value) {
+		return value.equalsIgnoreCase("true") || value.equalsIgnoreCase("false");
 	}
 }

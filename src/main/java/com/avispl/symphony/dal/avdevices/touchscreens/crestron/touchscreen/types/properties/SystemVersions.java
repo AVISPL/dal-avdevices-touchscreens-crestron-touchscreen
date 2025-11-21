@@ -10,7 +10,6 @@ import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.bases
  * @since 1.0.0
  */
 public enum SystemVersions implements BaseProperty {
-	CATEGORY("Category"),
 	VERSION("Version");
 
 	private final String name;
