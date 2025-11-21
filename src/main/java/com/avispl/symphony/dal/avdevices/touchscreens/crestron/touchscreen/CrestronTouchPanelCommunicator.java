@@ -5,16 +5,15 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.EnumMap;
 import java.util.HashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -47,12 +46,10 @@ import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.commo
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.AuthCookie;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.DeviceCapabilities;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.DeviceInfo;
-import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.IntervalSetting;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.SystemVersion;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.display.DeviceDisplay;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.network.NetworkAdapters;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.ResponseType;
-import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.adapter.RetrievalType;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.AdapterMetadata;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.Capabilities;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.Display;
@@ -68,10 +65,17 @@ import com.avispl.symphony.dal.util.StringUtils;
  * @since 1.0.0
  */
 public class CrestronTouchPanelCommunicator extends RestCommunicator implements Monitorable, Controller {
+	/** Set of supported group filter for {@code displayPropertyGroups}. */
+	private static final Set<String> SUPPORTED_GROUP_FILTERS = new TreeSet<>(Set.of(
+			Constant.GENERAL_GROUP, Constant.CAPABILITIES_GROUP, Constant.DISPLAY_GROUP,
+			Constant.NETWORK_GROUP, Constant.SYSTEM_VERSIONS_GROUP
+	));
+
 	/** Lock for thread-safe operations. */
 	private final ReentrantLock reentrantLock;
 	/** Object mapper used to convert JSON responses into Java objects. */
 	private final ObjectMapper objectMapper;
+	/** Handles request status tracking and error detection. */
 	private final RequestStateHandler requestStateHandler;
 
 	/** Device adapter instantiation timestamp. */
@@ -93,12 +97,8 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	/** Display retrieved from {@link EndpointConstant#DISPLAY}. */
 	private DeviceDisplay deviceDisplay;
 
-	/** Indicates whether control properties are visible; defaults to false. */
-	private boolean isConfigManagement;
-	/** Indicates whether groups are displayed; defaults to General. */
+	/** Indicates whether groups are displayed; defaults to {@link Constant#GENERAL_GROUP}. */
 	private final Set<String> displayPropertyGroups;
-	/** Interval control for retrieving data from APIs. */
-	private final EnumMap<RetrievalType, IntervalSetting> retrievalIntervals;
 
 	public CrestronTouchPanelCommunicator() {
 		this.reentrantLock = new ReentrantLock();
@@ -115,17 +115,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 		this.networkAdapters = new NetworkAdapters();
 		this.deviceDisplay = new DeviceDisplay();
 
-		this.isConfigManagement = false;
-		this.displayPropertyGroups = new LinkedHashSet<>(Set.of(Constant.GENERAL_GROUP));
-		this.retrievalIntervals = new EnumMap<>(RetrievalType.class);
-	}
-
-	public boolean configManagement() {
-		return isConfigManagement;
-	}
-
-	public void setConfigManagement(boolean configManagement) {
-		isConfigManagement = configManagement;
+		this.displayPropertyGroups = new TreeSet<>(Set.of(Constant.GENERAL_GROUP));
 	}
 
 	/**
@@ -134,122 +124,34 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	 * @return a comma-separated string of display property group names; may be empty if no groups are configured
 	 */
 	public String getDisplayPropertyGroups() {
-		return String.join(Constant.COMMA, this.displayPropertyGroups);
+		return String.join(Constant.COMMA_SPACE, this.displayPropertyGroups);
 	}
 
 	/**
-	 * Sets the list of property groups to be displayed, using a comma-separated string from adapter properties.
-	 *
-	 * @param displayPropertyGroups a comma-separated list of property group names to display; may be {@code null} or empty
+	 * Sets the display property groups based on a comma-separated list.
+	 * <p>
+	 * Trims values automatically. If {@link Constant#ALL} is present, {@link #SUPPORTED_GROUP_FILTERS} are added.
+	 * Invalid groups trigger a warning and only the default group applied. {@code null} or empty input is ignored.
+	 * </p>
+	 *`
+	 * @param displayPropertyGroups comma-separated group names; may be {@code null} or empty
 	 */
 	public void setDisplayPropertyGroups(String displayPropertyGroups) {
-		if (StringUtils.isNullOrEmpty(displayPropertyGroups)) {
+		if (StringUtils.isNullOrEmpty(displayPropertyGroups, true)) {
 			return;
 		}
-		this.displayPropertyGroups.clear();
-		Arrays.stream(displayPropertyGroups.split(Constant.COMMA)).map(String::trim)
-				.filter(displayPropertyGroup -> !displayPropertyGroup.isEmpty())
-				.forEach(this.displayPropertyGroups::add);
-	}
-
-	/**
-	 * Returns the configured retrieval interval (in milliseconds) for general properties.
-	 * <p>
-	 * If the interval has not been explicitly set, a default {@link IntervalSetting} will be created and returned.
-	 *
-	 * @return the retrieval interval for General properties, in milliseconds
-	 */
-	public long getGeneralInterval() {
-		return this.getIntervalSettingByType(RetrievalType.GENERAL).getIntervalMs();
-	}
-
-	/**
-	 * Sets the retrieval interval(ms) for general properties from adapter properties.
-	 *
-	 * @param generalInterval the interval duration(ms)
-	 */
-	public void setGeneralInterval(long generalInterval) {
-		this.retrievalIntervals.put(RetrievalType.GENERAL, new IntervalSetting(generalInterval));
-	}
-
-	/**
-	 * Returns the configured retrieval interval (in milliseconds) for Capabilities group.
-	 * <p>
-	 * If the interval has not been explicitly set, a default {@link IntervalSetting} will be created and returned.
-	 *
-	 * @return the retrieval interval for Capabilities group, in milliseconds
-	 */
-	public long getCapabilitiesInterval() {
-		return this.getIntervalSettingByType(RetrievalType.CAPABILITIES).getIntervalMs();
-	}
-
-	/**
-	 * Sets the retrieval interval(ms) for Capabilities group.
-	 *
-	 * @param capabilitiesInterval the interval duration(ms)
-	 */
-	public void setCapabilitiesInterval(long capabilitiesInterval) {
-		this.retrievalIntervals.put(RetrievalType.CAPABILITIES, new IntervalSetting(capabilitiesInterval));
-	}
-
-	/**
-	 * Returns the configured retrieval interval (in milliseconds) for Display, Audio Display, and Button Toolbar Display group.
-	 * <p>
-	 * If the interval has not been explicitly set, a default {@link IntervalSetting} will be created and returned.
-	 *
-	 * @return the retrieval interval for Display, Audio Display, and Button Toolbar Display group., in milliseconds
-	 */
-	public long getDisplayInterval() {
-		return this.getIntervalSettingByType(RetrievalType.DISPLAY).getIntervalMs();
-	}
-
-	/**
-	 * Sets the retrieval interval(ms) for Display, Audio Display, and Button Toolbar Display group.
-	 *
-	 * @param displayInterval the interval duration(ms)
-	 */
-	public void setDisplayInterval(long displayInterval) {
-		this.retrievalIntervals.put(RetrievalType.DISPLAY, new IntervalSetting(displayInterval));
-	}
-
-	/**
-	 * Returns the configured retrieval interval (in milliseconds) for Network group.
-	 * <p>
-	 * If the interval has not been explicitly set, a default {@link IntervalSetting} will be created and returned.
-	 *
-	 * @return the retrieval interval for Network group, in milliseconds
-	 */
-	public long getNetworkInterval() {
-		return this.getIntervalSettingByType(RetrievalType.NETWORK).getIntervalMs();
-	}
-
-	/**
-	 * Sets the retrieval interval(ms) for Network group.
-	 *
-	 * @param networkInterval the interval duration(ms)
-	 */
-	public void setNetworkInterval(long networkInterval) {
-		this.retrievalIntervals.put(RetrievalType.NETWORK, new IntervalSetting(networkInterval));
-	}
-
-	/**
-	 * Returns the configured retrieval interval (in milliseconds) for System Versions group.
-	 * <p>
-	 * If the interval has not been explicitly set, a default {@link IntervalSetting} will be created and returned.
-	 *
-	 * @return the retrieval interval for System Versions group, in milliseconds
-	 */
-	public long getSystemVersionsInterval() {
-		return this.getIntervalSettingByType(RetrievalType.SYSTEM_VERSIONS).getIntervalMs();
-	}
-
-	/**
-	 * Sets the retrieval interval(ms) for System Versions group.
-	 *
-	 * @param systemVersionsInterval the interval duration(ms)
-	 */
-	public void setSystemVersionsInterval(long systemVersionsInterval) {
-		this.retrievalIntervals.put(RetrievalType.SYSTEM_VERSIONS, new IntervalSetting(systemVersionsInterval));
+		Set<String> checkedGroups = Arrays.stream(displayPropertyGroups.split(Constant.COMMA))
+				.map(String::trim).filter(p -> !p.isEmpty()).collect(Collectors.toSet());
+		if (checkedGroups.contains(Constant.ALL)) {
+			this.displayPropertyGroups.addAll(SUPPORTED_GROUP_FILTERS);
+			return;
+		}
+		if (!CollectionUtils.containsAny(SUPPORTED_GROUP_FILTERS, checkedGroups)) {
+			this.logger.warn(Constant.NO_VALID_DISPLAY_PROPERTY_GROUPS_WARNING.formatted(displayPropertyGroups));
+		} else {
+			this.displayPropertyGroups.clear();
+			checkedGroups.stream().filter(SUPPORTED_GROUP_FILTERS::contains).forEach(this.displayPropertyGroups::add);
+		}
 	}
 
 	@Override
@@ -272,7 +174,6 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 		this.networkAdapters = null;
 		this.deviceDisplay = null;
 		this.displayPropertyGroups.clear();
-		this.retrievalIntervals.clear();
 		super.internalDestroy();
 	}
 
@@ -335,27 +236,38 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 			this.setupData();
 			ExtendedStatistics extendedStatistics = new ExtendedStatistics();
 			Map<String, String> statistics = new HashMap<>();
+			if (this.shouldDisplayGroup(Constant.GENERAL_GROUP)) {
+				statistics.putAll(MonitoringUtil.generateProperties(
+						General.values(), null, property -> MonitoringUtil.mapToGeneral(this.deviceInfo, property)
+				));
+			}
 			statistics.putAll(MonitoringUtil.generateProperties(
-					General.values(), null,
-					property -> MonitoringUtil.mapToGeneral(this.deviceInfo, property)
+					AdapterMetadata.values(), Constant.ADAPTER_METADATA_GROUP, property -> MonitoringUtil.mapToAdapterMetadata(this.versionProperties, property)
 			));
-			statistics.putAll(MonitoringUtil.generateProperties(
-					AdapterMetadata.values(), Constant.ADAPTER_METADATA_GROUP,
-					property -> MonitoringUtil.mapToAdapterMetadata(this.versionProperties, property)
-			));
-			statistics.putAll(MonitoringUtil.generateProperties(
-					Capabilities.values(), Constant.CAPABILITIES_GROUP,
-					property -> MonitoringUtil.mapToCapabilities(this.deviceCapabilities, property)
-			));
-			statistics.putAll(MonitoringUtil.generateSystemVersionProperties(this.systemVersions));
-			statistics.putAll(MonitoringUtil.generateProperties(
-					Network.values(), Constant.NETWORK_GROUP,
-					property -> MonitoringUtil.mapToNetwork(this.networkAdapters, property)
-			));
-			statistics.putAll(MonitoringUtil.generateDisplayProperties(this.deviceDisplay));
+			if (this.shouldDisplayGroup(Constant.CAPABILITIES_GROUP)) {
+				statistics.putAll(MonitoringUtil.generateProperties(
+						Capabilities.values(), Constant.CAPABILITIES_GROUP, property -> MonitoringUtil.mapToCapabilities(this.deviceCapabilities, property)
+				));
+			}
+			if (this.shouldDisplayGroup(Constant.SYSTEM_VERSIONS_GROUP)) {
+				statistics.putAll(MonitoringUtil.generateSystemVersionProperties(this.systemVersions));
+			}
+			if (this.shouldDisplayGroup(Constant.NETWORK_GROUP)) {
+				statistics.putAll(MonitoringUtil.generateProperties(
+						Network.values(), Constant.NETWORK_GROUP, property -> MonitoringUtil.mapToNetwork(this.networkAdapters, property)
+				));
+			}
+			if (this.shouldDisplayGroup(Constant.DISPLAY_GROUP)) {
+				statistics.putAll(MonitoringUtil.generateDisplayProperties(this.deviceDisplay));
+			}
 
-			List<AdvancedControllableProperty> controllableProperties = Optional.of(ControlUtil.generateDisplayControllers(this.deviceDisplay))
-					.filter(list -> !list.isEmpty()).orElseGet(() -> Collections.singletonList(Constant.DUMMY_CONTROLLER));
+			List<AdvancedControllableProperty> controllableProperties = new ArrayList<>();
+			if (this.shouldDisplayGroup(Constant.DISPLAY_GROUP)) {
+				controllableProperties.addAll(ControlUtil.generateDisplayControllers(this.deviceDisplay));
+			}
+			if (CollectionUtils.isEmpty(controllableProperties)) {
+				controllableProperties.add(Constant.DUMMY_CONTROLLER);
+			}
 
 			extendedStatistics.setStatistics(statistics);
 			extendedStatistics.setControllableProperties(controllableProperties);
@@ -419,20 +331,32 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	private void setupData() throws Exception {
 		this.authenticate();
 		this.requestStateHandler.clear();
-		this.deviceInfo = this.fetchData(EndpointConstant.DEVICE_INFO, ResponseType.DEVICE_INFO);
-		this.deviceCapabilities = this.fetchData(EndpointConstant.DEVICE_CAPABILITIES, ResponseType.DEVICE_CAPABILITIES);
-		this.systemVersions = this.fetchData(EndpointConstant.SYSTEM_VERSIONS, ResponseType.SYSTEM_VERSIONS);
-		this.networkAdapters = this.fetchData(EndpointConstant.NETWORK_ADAPTERS, ResponseType.NETWORK_ADAPTERS);
-		this.deviceDisplay = this.fetchData(EndpointConstant.DISPLAY, ResponseType.DISPLAY);
+		if (this.shouldDisplayGroup(Constant.GENERAL_GROUP)) {
+			this.deviceInfo = this.fetchData(EndpointConstant.DEVICE_INFO, ResponseType.DEVICE_INFO);
+		}
+		if (this.shouldDisplayGroup(Constant.CAPABILITIES_GROUP)) {
+			this.deviceCapabilities = this.fetchData(EndpointConstant.DEVICE_CAPABILITIES, ResponseType.DEVICE_CAPABILITIES);
+		}
+		if (this.shouldDisplayGroup(Constant.SYSTEM_VERSIONS_GROUP)) {
+			this.systemVersions = this.fetchData(EndpointConstant.SYSTEM_VERSIONS, ResponseType.SYSTEM_VERSIONS);
+		}
+		if (this.shouldDisplayGroup(Constant.NETWORK_GROUP)) {
+			this.networkAdapters = this.fetchData(EndpointConstant.NETWORK_ADAPTERS, ResponseType.NETWORK_ADAPTERS);
+		}
+		if (this.shouldDisplayGroup(Constant.DISPLAY_GROUP)) {
+			this.deviceDisplay = this.fetchData(EndpointConstant.DISPLAY, ResponseType.DISPLAY);
+		}
 		this.requestStateHandler.verifyState();
 	}
 
 	/**
-	 * Returns the IntervalSetting for the given type, creating one if absent.
-	 * Guarantees a non-null entry so callers don't need null checks.
+	 * Checks whether the specified property group is configured to be displayed.
+	 *
+	 * @param groupName the name of the property group to check
+	 * @return {@code true} if the group is configured to be displayed; {@code false} otherwise
 	 */
-	private IntervalSetting getIntervalSettingByType(RetrievalType type) {
-		return this.retrievalIntervals.computeIfAbsent(type, t -> new IntervalSetting());
+	public boolean shouldDisplayGroup(String groupName) {
+		return CollectionUtils.isNotEmpty(this.displayPropertyGroups) && this.displayPropertyGroups.contains(groupName);
 	}
 
 	/**
