@@ -30,10 +30,11 @@ public final class Constant {
 	public static final String X_CREST_XSRF_TOKEN_HEADER = "X-CREST-XSRF-TOKEN";
 	public static final String ON = "On";
 	public static final String OFF = "Off";
+	public static final String ALL = "All";
 
 	//	Special characters
 	public static final String COMMA = ",";
-	public static final String SPACE = " ";
+	public static final String COMMA_SPACE = ", ";
 	public static final String EMPTY = "";
 	public static final String HASH = "#";
 
@@ -50,8 +51,8 @@ public final class Constant {
 
 	//	Warning messages
 	public static final String CONTROLLABLE_PROPS_EMPTY_WARNING = "ControllableProperties list is null or empty, skipping control operation";
-	public static final String UNSUPPORTED_MAP_PROPERTY_WARNING = "Unsupported %s with property %s";
 	public static final String FETCHED_DATA_NULL_WARNING = "Fetched data is null. Endpoint: %s, ResponseClass: %s";
+	public static final String NO_VALID_DISPLAY_PROPERTY_GROUPS_WARNING = "No valid display property groups found from input: '%s'";
 
 	//	Fail messages
 	public static final String REQUEST_APIS_FAILED = "Unable to process requested API sections: [%s], error reported: [%s]";
