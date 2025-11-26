@@ -143,12 +143,10 @@ public final class MonitoringUtil {
 				Constant.PROPERTY_FORMAT.formatted(prefixName, Display.AUDIO_PANEL_VOLUME.getName()),
 				Optional.ofNullable(mapToValue(audio.getVolume())).orElse(Constant.NOT_AVAILABLE)
 		);
-		if (Boolean.FALSE.equals(audio.getIsMuted())) {
-			properties.put(
-					Constant.PROPERTY_FORMAT.formatted(prefixName, Display.AUDIO_PANEL_VOLUME_VALUE.getName()),
-					Optional.ofNullable(mapToValue(audio.getVolume())).orElse(Constant.NOT_AVAILABLE)
-			);
-		}
+		properties.put(
+				Constant.PROPERTY_FORMAT.formatted(prefixName, Display.AUDIO_PANEL_VOLUME_VALUE.getName()),
+				Optional.ofNullable(mapToValue(audio.getVolume())).orElse(Constant.NOT_AVAILABLE)
+		);
 		//	Audio.Media
 		properties.put(
 				Constant.PROPERTY_FORMAT.formatted(prefixName, Display.AUDIO_MEDIA_MUTE.getName()),
@@ -158,12 +156,10 @@ public final class MonitoringUtil {
 				Constant.PROPERTY_FORMAT.formatted(prefixName, Display.AUDIO_MEDIA_VOLUME.getName()),
 				Optional.ofNullable(mapToValue(audio.getMediaVolume())).orElse(Constant.NOT_AVAILABLE)
 		);
-		if (Boolean.FALSE.equals(audio.getIsMediaMuted())) {
-			properties.put(
-					Constant.PROPERTY_FORMAT.formatted(prefixName, Display.AUDIO_MEDIA_VOLUME_VALUE.getName()),
-					Optional.ofNullable(mapToValue(audio.getMediaVolume())).orElse(Constant.NOT_AVAILABLE)
-			);
-		}
+		properties.put(
+				Constant.PROPERTY_FORMAT.formatted(prefixName, Display.AUDIO_MEDIA_VOLUME_VALUE.getName()),
+				Optional.ofNullable(mapToValue(audio.getMediaVolume())).orElse(Constant.NOT_AVAILABLE)
+		);
 		//	Audio.Beep
 		properties.put(
 				Constant.PROPERTY_FORMAT.formatted(prefixName, Display.AUDIO_BEEP_ENABLED.getName()),
@@ -173,12 +169,10 @@ public final class MonitoringUtil {
 				Constant.PROPERTY_FORMAT.formatted(prefixName, Display.AUDIO_BEEP_VOLUME.getName()),
 				Optional.ofNullable(mapToValue(audio.getBeepVolume())).orElse(Constant.NOT_AVAILABLE)
 		);
-		if (Boolean.TRUE.equals(audio.getIsBeepEnabled())) {
-			properties.put(
-					Constant.PROPERTY_FORMAT.formatted(prefixName, Display.AUDIO_BEEP_VOLUME_VALUE.getName()),
-					Optional.ofNullable(mapToValue(audio.getBeepVolume())).orElse(Constant.NOT_AVAILABLE)
-			);
-		}
+		properties.put(
+				Constant.PROPERTY_FORMAT.formatted(prefixName, Display.AUDIO_BEEP_VOLUME_VALUE.getName()),
+				Optional.ofNullable(mapToValue(audio.getBeepVolume())).orElse(Constant.NOT_AVAILABLE)
+		);
 		//	LCD
 		//	LCD.Brightness
 		properties.put(
@@ -189,23 +183,19 @@ public final class MonitoringUtil {
 				Constant.PROPERTY_FORMAT.formatted(prefixName, Display.LCD_BRIGHTNESS.getName()),
 				Optional.ofNullable(mapToValue(lcd.getBrightness())).orElse(Constant.NOT_AVAILABLE)
 		);
-		if (Boolean.FALSE.equals(autoBrightness.getIsEnabled())) {
-			properties.put(
-					Constant.PROPERTY_FORMAT.formatted(prefixName, Display.LCD_BRIGHTNESS_VALUE.getName()),
-					Optional.ofNullable(mapToValue(lcd.getBrightness())).orElse(Constant.NOT_AVAILABLE)
-			);
-		}
+		properties.put(
+				Constant.PROPERTY_FORMAT.formatted(prefixName, Display.LCD_BRIGHTNESS_VALUE.getName()),
+				Optional.ofNullable(mapToValue(lcd.getBrightness())).orElse(Constant.NOT_AVAILABLE)
+		);
 		//	LCD.Threshold
 		properties.put(
 				Constant.PROPERTY_FORMAT.formatted(prefixName, Display.LCD_ALS_THRESHOLD.getName()),
 				Optional.ofNullable(mapToValue(autoBrightness.getThresholdValue())).orElse(Constant.NOT_AVAILABLE)
 		);
-		if (Boolean.TRUE.equals(autoBrightness.getIsEnabled())) {
-			properties.put(
-					Constant.PROPERTY_FORMAT.formatted(prefixName, Display.LCD_ALS_THRESHOLD_VALUE.getName()),
-					Optional.ofNullable(mapToValue(autoBrightness.getThresholdValue())).orElse(Constant.NOT_AVAILABLE)
-			);
-		}
+		properties.put(
+				Constant.PROPERTY_FORMAT.formatted(prefixName, Display.LCD_ALS_THRESHOLD_VALUE.getName()),
+				Optional.ofNullable(mapToValue(autoBrightness.getThresholdValue())).orElse(Constant.NOT_AVAILABLE)
+		);
 		//	LCD.HighPreset
 		properties.put(
 				Constant.PROPERTY_FORMAT.formatted(prefixName, Display.LCD_BRIGHTNESS_HIGH_PRESET.getName()),
@@ -271,7 +261,7 @@ public final class MonitoringUtil {
 		return switch (adapterMetadata) {
 			case ADAPTER_UPTIME -> mapToUptime(versionProperties.getProperty(adapterMetadata.getProperty()));
 			case ADAPTER_UPTIME_MIN -> mapToUptimeMin(versionProperties.getProperty(adapterMetadata.getProperty()));
-			case ADAPTER_BUILD_DATE, ADAPTER_VERSION, ACTIVE_PROPERTY_GROUPS -> mapToValue(versionProperties.getProperty(adapterMetadata.getProperty()));
+			default -> mapToValue(versionProperties.getProperty(adapterMetadata.getProperty()));
 		};
 	}
 

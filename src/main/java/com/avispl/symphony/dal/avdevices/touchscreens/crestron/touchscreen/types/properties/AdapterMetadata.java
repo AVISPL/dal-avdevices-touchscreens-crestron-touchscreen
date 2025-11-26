@@ -1,6 +1,8 @@
 /** Copyright (c) 2025 AVI-SPL, Inc. All Rights Reserved. */
 package com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties;
 
+import lombok.Getter;
+
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.bases.BaseProperty;
 
 /**
@@ -9,6 +11,7 @@ import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.bases
  * @author Kevin / Symphony Dev Team
  * @since 1.0.0
  */
+@Getter
 public enum AdapterMetadata implements BaseProperty {
 	ADAPTER_BUILD_DATE("AdapterBuildDate", "adapter.build.date"),
 	ADAPTER_UPTIME("AdapterUptime", "adapter.uptime"),
@@ -22,24 +25,5 @@ public enum AdapterMetadata implements BaseProperty {
 	AdapterMetadata(String name, String property) {
 		this.name = name;
 		this.property = property;
-	}
-
-	/**
-	 * Retrieves {@link #name}
-	 *
-	 * @return value of {@link #name}
-	 */
-	@Override
-	public String getName() {
-		return name;
-	}
-
-	/**
-	 * Retrieves {@link #property}
-	 *
-	 * @return value of {@link #property}
-	 */
-	public String getProperty() {
-		return property;
 	}
 }
