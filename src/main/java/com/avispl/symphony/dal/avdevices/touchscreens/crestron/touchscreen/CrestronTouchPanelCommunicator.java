@@ -187,21 +187,21 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 			RestTemplate restTemplate = this.obtainRestTemplate();
 			final String baseUrl = this.getProtocol() + "://" + this.host + ":" + this.getPort();
 			final String loginUrl = baseUrl + EndpointConstant.LOGIN;
+			this.authCookie.setOrigin(this.host);
+			this.authCookie.setLoginReferer(this.host + EndpointConstant.LOGIN);
 			//	Send GET login request to fetch TRACK ID cookie, required for POST login request.
-			if (this.authCookie.getTrackId() == null) {
+			if (StringUtils.isNullOrEmpty(this.authCookie.getTrackId(), true)) {
 				ResponseEntity<String> getLoginResponse = restTemplate.exchange(loginUrl, HttpMethod.GET, HttpEntity.EMPTY, String.class);
 				List<String> getCookies = getLoginResponse.getHeaders().get(HttpHeaders.SET_COOKIE);
 				if (CollectionUtils.isNotEmpty(getCookies)) {
-					String trackIdCookieValue = getCookies.get(0);
-					this.authCookie.setTrackId(trackIdCookieValue);
-					this.authCookie.setOrigin(this.host);
-					this.authCookie.setLoginReferer(this.host + EndpointConstant.LOGIN);
+					this.authCookie.setTrackId(getCookies.get(0));
 				}
 			}
 			//	Send POST login request to fetch Set-Cookie and refresh token.
-			if (this.authCookie.getCookie() == null) {
+			if (StringUtils.isNullOrEmpty(this.authCookie.getCookie(), true)) {
 				//	Call the Logout API to clear the login session
 				restTemplate.exchange(baseUrl + EndpointConstant.LOGOUT, HttpMethod.GET, HttpEntity.EMPTY, String.class);
+				//	Set up request body and send the POST login API
 				HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(
 						this.authCookie.getFormURLEncodedBody(this.getLogin(), this.getPassword()),
 						this.authCookie.getRequestHeaders()
@@ -290,6 +290,10 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 					.orElseThrow(() -> new InvalidArgumentException("Unsupported property %s to control".formatted(controllableProperty.getProperty())));
 			Map<String, Object> body = ControlUtil.buildDisplayRequest(display, controllableProperty.getValue());
 			this.doPost(EndpointConstant.DISPLAY, body);
+		} catch (InvalidArgumentException | FailedLoginException | ResourceNotReachableException ex) {
+			throw ex;
+		} catch (Exception ex) {
+			throw new IllegalStateException(Constant.CONTROL_PROPERTY_FAILED, ex);
 		} finally {
 			this.reentrantLock.unlock();
 		}
