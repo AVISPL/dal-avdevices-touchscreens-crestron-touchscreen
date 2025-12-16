@@ -381,7 +381,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 		} catch (FailedLoginException e) {
 			throw e;
 		} catch (Exception e) {
-			throw new ResourceNotReachableException(Constant.FETCH_DATA_FAILED.formatted(endpoint), e);
+			throw new IllegalStateException(Constant.FETCH_DATA_FAILED.formatted(endpoint), e);
 		}
 	}
 }

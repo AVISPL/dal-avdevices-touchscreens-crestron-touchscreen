@@ -56,7 +56,7 @@ public final class Constant {
 
 	//	Fail messages
 	public static final String READ_PROPERTIES_FILE_FAILED = "Failed to load version properties file.";
-	public static final String FETCH_DATA_FAILED = "Failed to fetch data. Endpoint: %s";
+	public static final String FETCH_DATA_FAILED = "Device monitoring cannot proceed, the required data could not be fetched from the %s endpoint.";
 	public static final String MAP_TO_UPTIME_FAILED = "Failed to mapToUptime with uptime: ";
 	public static final String MAP_TO_UPTIME_MIN_FAILED = "Failed to mapToUptimeMin with uptime: ";
 	public static final String LOGIN_FAILED = "Failed to login, please check the credentials";
