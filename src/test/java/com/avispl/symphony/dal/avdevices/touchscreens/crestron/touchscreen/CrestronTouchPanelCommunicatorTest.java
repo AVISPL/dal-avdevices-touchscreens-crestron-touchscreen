@@ -45,6 +45,7 @@ class CrestronTouchPanelCommunicatorTest {
 
 	@Test
 	void testGetMultipleStatistics() throws Exception {
+		this.communicator.setDisplayPropertyGroups(Constant.ALL);
 		this.extendedStatistics = (ExtendedStatistics) this.communicator.getMultipleStatistics().get(0);
 		Map<String, String> statistics = this.extendedStatistics.getStatistics();
 
