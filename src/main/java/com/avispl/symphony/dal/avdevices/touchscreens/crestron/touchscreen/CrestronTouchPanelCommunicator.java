@@ -38,7 +38,6 @@ import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.api.dal.dto.monitor.Statistics;
 import com.avispl.symphony.api.dal.error.ResourceNotReachableException;
 import com.avispl.symphony.api.dal.monitor.Monitorable;
-import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.RequestStateHandler;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.constants.Constant;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.constants.EndpointConstant;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.utils.ControlUtil;
@@ -75,8 +74,6 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	private final ReentrantLock reentrantLock;
 	/** Object mapper used to convert JSON responses into Java objects. */
 	private final ObjectMapper objectMapper;
-	/** Handles request status tracking and error detection. */
-	private final RequestStateHandler requestStateHandler;
 
 	/** Device adapter instantiation timestamp. */
 	private final long adapterInitializationTimestamp;
@@ -103,7 +100,6 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	public CrestronTouchPanelCommunicator() {
 		this.reentrantLock = new ReentrantLock();
 		this.objectMapper = new ObjectMapper();
-		this.requestStateHandler = new RequestStateHandler();
 
 		this.adapterInitializationTimestamp = System.currentTimeMillis();
 		this.versionProperties = new Properties();
@@ -166,7 +162,6 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	protected void internalDestroy() {
 		this.versionProperties.clear();
 		this.localExtendedStatistics = null;
-		this.requestStateHandler.clear();
 		this.authCookie = null;
 		this.deviceInfo = null;
 		this.deviceCapabilities = null;
@@ -334,7 +329,6 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	 */
 	private void setupData() throws Exception {
 		this.authenticate();
-		this.requestStateHandler.clear();
 		if (this.shouldDisplayGroup(Constant.GENERAL_GROUP)) {
 			this.deviceInfo = this.fetchData(EndpointConstant.DEVICE_INFO, ResponseType.DEVICE_INFO);
 		}
@@ -350,7 +344,6 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 		if (this.shouldDisplayGroup(Constant.DISPLAY_GROUP)) {
 			this.deviceDisplay = this.fetchData(EndpointConstant.DISPLAY, ResponseType.DISPLAY);
 		}
-		this.requestStateHandler.verifyState();
 	}
 
 	/**
@@ -366,7 +359,6 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	/**
 	 * Fetches data from a given endpoint and maps the response to the specified class type in {@link ResponseType}.
 	 *
-	 * @param endpoint the API endpoint URL to request data from
 	 * @param responseType defines how to extract and map the response into a specific class
 	 * @param <T> the generic type representing the expected response object
 	 * @return the mapped response object, or {@code null} if the response is empty or mapping fails
@@ -374,9 +366,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	 * @throws ResourceNotReachableException if the target endpoint cannot be reached
 	 */
 	public <T> T fetchData(String endpoint, ResponseType responseType) throws FailedLoginException {
-		String responseClassName = responseType.getClazz().getSimpleName();
 		try {
-			this.requestStateHandler.pushRequest(endpoint);
 			String response = super.doGet(endpoint);
 			JsonNode responseNode = responseType.extractNode(this.objectMapper.readTree(response));
 			@SuppressWarnings("unchecked")
@@ -384,17 +374,14 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 					? (T) this.objectMapper.convertValue(responseNode, responseType.getTypeRef(this.objectMapper))
 					: (T) this.objectMapper.treeToValue(responseNode, responseType.getClazz());
 			if (Objects.isNull(mappedResponse)) {
-				this.logger.warn(String.format(Constant.FETCHED_DATA_NULL_WARNING, endpoint, responseClassName));
+				this.logger.warn(String.format(Constant.FETCHED_DATA_NULL_WARNING, endpoint, responseType.getClazz().getSimpleName()));
 			}
-			this.requestStateHandler.resolve(endpoint);
 
 			return mappedResponse;
-		} catch (FailedLoginException | ResourceNotReachableException e) {
+		} catch (FailedLoginException e) {
 			throw e;
 		} catch (Exception e) {
-			this.requestStateHandler.push(endpoint, e);
-			this.logger.error(Constant.FETCH_DATA_FAILED.formatted(endpoint, responseClassName), e);
-			return null;
+			throw new IllegalStateException(Constant.FETCH_DATA_FAILED.formatted(endpoint), e);
 		}
 	}
 }
