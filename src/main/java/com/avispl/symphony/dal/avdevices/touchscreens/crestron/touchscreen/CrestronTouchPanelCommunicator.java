@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
@@ -25,6 +26,7 @@ import org.springframework.web.client.HttpClientErrorException.Unauthorized;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
+import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import javax.security.auth.login.FailedLoginException;
@@ -42,6 +44,7 @@ import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.commo
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.constants.EndpointConstant;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.utils.ControlUtil;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.utils.MonitoringUtil;
+import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.utils.Util;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.AuthCookie;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.DeviceCapabilities;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.DeviceInfo;
@@ -357,17 +360,28 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	}
 
 	/**
-	 * Fetches data from a given endpoint and maps the response to the specified class type in {@link ResponseType}.
+	 * Fetches data from a given endpoint and maps the response to the specified type defined in {@link ResponseType}.
 	 *
+	 * @param endpoint the target endpoint to fetch data from
 	 * @param responseType defines how to extract and map the response into a specific class
 	 * @param <T> the generic type representing the expected response object
 	 * @return the mapped response object, or {@code null} if the response is empty or mapping fails
 	 * @throws FailedLoginException if authentication fails while accessing the endpoint
-	 * @throws ResourceNotReachableException if the target endpoint cannot be reached
+	 * @throws IllegalStateException if an unexpected error occurs while fetching or processing the response
 	 */
 	public <T> T fetchData(String endpoint, ResponseType responseType) throws FailedLoginException {
+		String previewedResponse = null;
 		try {
-			String response = super.doGet(endpoint);
+			String response = Optional.ofNullable(super.doGet(endpoint)).map(String::trim).orElse(null);
+			if (response == null || response.isBlank()) {
+				this.logger.warn("Empty response from endpoint '%s'".formatted(endpoint));
+				return null;
+			}
+			previewedResponse = response.substring(0, Math.min(150, response.length()));
+			if (!Util.isLikelyJson(response)) {
+				this.logger.warn("Non-JSON response from endpoint %s, preview: %s".formatted(endpoint, previewedResponse));
+				return null;
+			}
 			JsonNode responseNode = responseType.extractNode(this.objectMapper.readTree(response));
 			@SuppressWarnings("unchecked")
 			T mappedResponse = responseType.isCollection()
@@ -380,6 +394,9 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 			return mappedResponse;
 		} catch (FailedLoginException e) {
 			throw e;
+		} catch (JacksonException e) {
+			this.logger.error("Failed to parse JSON from endpoint %s, preview: %s".formatted(endpoint, previewedResponse), e);
+			return null;
 		} catch (Exception e) {
 			throw new IllegalStateException(Constant.FETCH_DATA_FAILED.formatted(endpoint), e);
 		}
