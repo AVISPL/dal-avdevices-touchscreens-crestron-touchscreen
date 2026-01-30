@@ -44,7 +44,6 @@ import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.commo
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.constants.EndpointConstant;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.utils.ControlUtil;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.utils.MonitoringUtil;
-import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.utils.Util;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.AuthCookie;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.DeviceCapabilities;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.DeviceInfo;
@@ -378,10 +377,6 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 				return null;
 			}
 			previewedResponse = response.substring(0, Math.min(150, response.length()));
-			if (!Util.isLikelyJson(response)) {
-				this.logger.warn("Non-JSON response from endpoint %s, preview: %s".formatted(endpoint, previewedResponse));
-				return null;
-			}
 			JsonNode responseNode = responseType.extractNode(this.objectMapper.readTree(response));
 			@SuppressWarnings("unchecked")
 			T mappedResponse = responseType.isCollection()

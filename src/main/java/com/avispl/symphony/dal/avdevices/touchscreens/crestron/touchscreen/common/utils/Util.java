@@ -157,8 +157,4 @@ public final class Util {
 	public static DeviceDisplay.VirtualButtons getDisplayButtonToolbar(DeviceDisplay display) {
 		return Optional.ofNullable(display.getVirtualButtons()).orElse(new DeviceDisplay.VirtualButtons());
 	}
-
-	public static boolean isLikelyJson(String body) {
-		return body.startsWith("{") || body.startsWith("[");
-	}
 }
