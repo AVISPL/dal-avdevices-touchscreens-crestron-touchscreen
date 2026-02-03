@@ -6,7 +6,7 @@
 
   <groupId>com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen</groupId>
   <artifactId>symphony-dal-avdevices-touchscreens-crestron-touchscreen</artifactId>
-  <version>1.0.0</version>
+  <version>1.0.1</version>
   <properties>
     <symphonyApiVersion>RELEASE</symphonyApiVersion>
     <timestamp>${maven.build.timestamp}</timestamp>
