@@ -1,9 +1,6 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-
   <groupId>com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen</groupId>
   <artifactId>symphony-dal-avdevices-touchscreens-crestron-touchscreen</artifactId>
   <version>1.0.1</version>
@@ -12,7 +9,6 @@
     <timestamp>${maven.build.timestamp}</timestamp>
     <maven.build.timestamp.format>yyyy-MM-dd HH:mm</maven.build.timestamp.format>
   </properties>
-
   <build>
     <resources>
       <resource>
@@ -117,7 +113,7 @@
       <artifactId>symphony-dal-commons</artifactId>
       <version>${symphonyApiVersion}</version>
       <scope>system</scope>
-      <systemPath>${basedir}/lib/symphony-dal-commons-6.3.0.jar</systemPath>
+      <systemPath>${basedir}/lib/symphony-dal-commons-6.5.0.jar</systemPath>
     </dependency>
     <dependency>
       <groupId>com.avispl.symphony.api</groupId>
@@ -133,41 +129,40 @@
       <scope>system</scope>
       <systemPath>${basedir}/lib/icmp4j-1018.jar</systemPath>
     </dependency>
-
     <!--dependencies of symphony-dal-commons-->
     <dependency>
       <groupId>commons-net</groupId>
       <artifactId>commons-net</artifactId>
-      <version>3.9.0</version>
+      <version>3.12.0</version>
     </dependency>
     <dependency>
       <groupId>commons-beanutils</groupId>
       <artifactId>commons-beanutils</artifactId>
-      <version>1.9.4</version>
+      <version>1.11.0</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.snmp4j</groupId>
       <artifactId>snmp4j</artifactId>
-      <version>3.7.7</version>
+      <version>3.9.6</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-web</artifactId>
-      <version>6.2.1</version>
+      <version>6.2.14</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-expression</artifactId>
-      <version>6.2.1</version>
+      <version>6.2.14</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-context-support</artifactId>
-      <version>6.2.1</version>
+      <version>6.2.14</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
@@ -185,7 +180,7 @@
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
-      <version>2.14.2</version>
+      <version>2.20.1</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
@@ -232,7 +227,7 @@
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-test</artifactId>
-      <version>5.2.25.RELEASE</version>
+      <version>6.2.14</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
