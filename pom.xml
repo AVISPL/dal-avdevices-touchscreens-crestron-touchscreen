@@ -6,7 +6,7 @@
 
   <groupId>com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen</groupId>
   <artifactId>symphony-dal-avdevices-touchscreens-crestron-touchscreen</artifactId>
-  <version>1.0.0</version>
+  <version>1.0.1</version>
   <properties>
     <symphonyApiVersion>RELEASE</symphonyApiVersion>
     <timestamp>${maven.build.timestamp}</timestamp>
@@ -174,6 +174,7 @@
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
       <version>1.18.32</version>
+      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
@@ -184,12 +185,6 @@
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
-      <version>2.14.2</version>
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.fasterxml.jackson.dataformat</groupId>
-      <artifactId>jackson-dataformat-yaml</artifactId>
       <version>2.14.2</version>
       <scope>provided</scope>
     </dependency>
