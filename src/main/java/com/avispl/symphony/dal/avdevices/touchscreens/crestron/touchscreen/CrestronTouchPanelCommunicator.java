@@ -189,9 +189,10 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 			//	Send GET login request to fetch TRACK ID cookie, required for POST login request.
 			if (StringUtils.isNullOrEmpty(this.authCookie.getTrackId(), true)) {
 				ResponseEntity<String> getLoginResponse = restTemplate.exchange(loginUrl, HttpMethod.GET, HttpEntity.EMPTY, String.class);
-				List<String> getCookies = getLoginResponse.getHeaders().get(HttpHeaders.SET_COOKIE);
-				if (CollectionUtils.isNotEmpty(getCookies)) {
-					this.authCookie.setTrackId(getCookies.get(0));
+				//	getFirst() instead of get(): HttpHeaders.get has different signatures in Spring 6 and 7
+				String trackId = getLoginResponse.getHeaders().getFirst(HttpHeaders.SET_COOKIE);
+				if (trackId != null) {
+					this.authCookie.setTrackId(trackId);
 				}
 			}
 			//	Send POST login request to fetch Set-Cookie and refresh token.
@@ -204,7 +205,13 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 						this.authCookie.getRequestHeaders()
 				);
 				ResponseEntity<String> postLoginResponse = restTemplate.exchange(loginUrl, HttpMethod.POST, request, String.class);
-				List<String> postCookies = postLoginResponse.getHeaders().get(HttpHeaders.SET_COOKIE);
+				//	headerSet() instead of get(): HttpHeaders.get has different signatures in Spring 6 and 7
+				List<String> postCookies = new ArrayList<>();
+				postLoginResponse.getHeaders().headerSet().forEach(header -> {
+					if (header.getKey().equalsIgnoreCase(HttpHeaders.SET_COOKIE)) {
+						postCookies.addAll(header.getValue());
+					}
+				});
 				if (CollectionUtils.isNotEmpty(postCookies)) {
 					this.authCookie.setCookie(String.join(Constant.COMMA, postCookies));
 					this.authCookie.setRefreshToken(postLoginResponse.getHeaders().getFirst(Constant.CREST_XSRF_TOKEN_HEADER));
