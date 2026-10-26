@@ -2,8 +2,10 @@
 package com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models;
 
 import org.springframework.http.HttpHeaders;
+import org.springframework.util.LinkedCaseInsensitiveMap;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.util.MultiValueMapAdapter;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -27,11 +29,13 @@ public class AuthCookie {
 
 	/**
 	 * Builds and returns a set of default HTTP headers.
+	 * A case-insensitive {@link MultiValueMap} is used instead of {@link HttpHeaders}, because
+	 * {@code new HttpEntity<>(body, HttpHeaders)} links to different constructors in Spring 6 and 7.
 	 *
-	 * @return a {@link HttpHeaders} object containing authentication headers.
+	 * @return a {@link MultiValueMap} object containing authentication headers.
 	 */
-	public final HttpHeaders getRequestHeaders() {
-		HttpHeaders headers = new HttpHeaders();
+	public final MultiValueMap<String, String> getRequestHeaders() {
+		MultiValueMap<String, String> headers = new MultiValueMapAdapter<>(new LinkedCaseInsensitiveMap<>());
 		headers.set(HttpHeaders.COOKIE, this.trackId);
 		headers.set(HttpHeaders.ORIGIN, this.origin);
 		headers.set(HttpHeaders.REFERER, this.loginReferer);
