@@ -19,10 +19,12 @@ import java.util.stream.Collectors;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpClientErrorException.Forbidden;
 import org.springframework.web.client.HttpClientErrorException.Unauthorized;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
@@ -33,11 +35,13 @@ import javax.security.auth.login.FailedLoginException;
 import org.apache.commons.collections.CollectionUtils;
 
 import com.avispl.symphony.api.common.error.InvalidArgumentException;
+import com.avispl.symphony.api.common.error.ServiceNotAvailableException;
 import com.avispl.symphony.api.dal.control.Controller;
 import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty;
 import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
 import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.api.dal.dto.monitor.Statistics;
+import com.avispl.symphony.api.dal.error.CommandFailureException;
 import com.avispl.symphony.api.dal.error.ResourceNotReachableException;
 import com.avispl.symphony.api.dal.monitor.Monitorable;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.constants.Constant;
@@ -212,10 +216,12 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 						postCookies.addAll(header.getValue());
 					}
 				});
-				if (CollectionUtils.isNotEmpty(postCookies)) {
-					this.authCookie.setCookie(String.join(Constant.COMMA, postCookies));
-					this.authCookie.setRefreshToken(postLoginResponse.getHeaders().getFirst(Constant.CREST_XSRF_TOKEN_HEADER));
+				//	No session cookie means the device did not accept the login (e.g. it served the login page again).
+				if (CollectionUtils.isEmpty(postCookies)) {
+					throw new FailedLoginException(Constant.LOGIN_FAILED);
 				}
+				this.authCookie.setCookie(String.join(Constant.COMMA, postCookies));
+				this.authCookie.setRefreshToken(postLoginResponse.getHeaders().getFirst(Constant.CREST_XSRF_TOKEN_HEADER));
 			}
 		} catch (Unauthorized | Forbidden ex) {
 			throw new FailedLoginException(ex.getResponseBodyAsString());
@@ -293,8 +299,8 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 			Display display = Display.getByName(components[1])
 					.orElseThrow(() -> new InvalidArgumentException("Unsupported property %s to control".formatted(controllableProperty.getProperty())));
 			Map<String, Object> body = ControlUtil.buildDisplayRequest(display, controllableProperty.getValue());
-			this.doPost(EndpointConstant.DISPLAY, body);
-		} catch (InvalidArgumentException | FailedLoginException | ResourceNotReachableException ex) {
+			this.executeWithSession(EndpointConstant.DISPLAY, () -> this.postControl(EndpointConstant.DISPLAY, body));
+		} catch (InvalidArgumentException | FailedLoginException | ResourceNotReachableException | ServiceNotAvailableException ex) {
 			throw ex;
 		} catch (Exception ex) {
 			throw new IllegalStateException(Constant.CONTROL_PROPERTY_FAILED, ex);
@@ -376,14 +382,37 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	 * @throws IllegalStateException if an unexpected error occurs while fetching or processing the response
 	 */
 	public <T> T fetchData(String endpoint, ResponseType responseType) throws FailedLoginException {
-		String previewedResponse = null;
 		try {
-			String response = Optional.ofNullable(super.doGet(endpoint)).map(String::trim).orElse(null);
-			if (response == null || response.isBlank()) {
-				this.logger.warn("Empty response from endpoint '%s'".formatted(endpoint));
-				return null;
-			}
-			previewedResponse = response.substring(0, Math.min(150, response.length()));
+			return this.executeWithSession(endpoint, () -> this.fetchDataOnce(endpoint, responseType));
+		} catch (FailedLoginException | ServiceNotAvailableException e) {
+			throw e;
+		} catch (Exception e) {
+			throw new IllegalStateException(Constant.FETCH_DATA_FAILED.formatted(endpoint), e);
+		}
+	}
+
+	/**
+	 * Sends a single GET request to the endpoint and maps the response, without any session recovery.
+	 *
+	 * @param endpoint the target endpoint to fetch data from
+	 * @param responseType defines how to extract and map the response into a specific class
+	 * @param <T> the generic type representing the expected response object
+	 * @return the mapped response object, or {@code null} if the response is empty or is JSON that cannot be mapped
+	 * @throws ServiceNotAvailableException if the device answered with an HTML page (e.g. its login page) instead of JSON
+	 * @throws Exception if the request fails
+	 */
+	private <T> T fetchDataOnce(String endpoint, ResponseType responseType) throws Exception {
+		String response = Optional.ofNullable(super.doGet(endpoint)).map(String::trim).orElse(null);
+		if (response == null || response.isBlank()) {
+			this.logger.warn("Empty response from endpoint '%s'".formatted(endpoint));
+			return null;
+		}
+		String previewedResponse = response.substring(0, Math.min(150, response.length()));
+		if (response.startsWith(Constant.HTML_RESPONSE_PREFIX)) {
+			this.logger.warn("Endpoint %s returned HTML instead of JSON, preview: %s".formatted(endpoint, previewedResponse));
+			throw new ServiceNotAvailableException(Constant.UNEXPECTED_HTML_RESPONSE.formatted(endpoint));
+		}
+		try {
 			JsonNode responseNode = responseType.extractNode(this.objectMapper.readTree(response));
 			@SuppressWarnings("unchecked")
 			T mappedResponse = responseType.isCollection()
@@ -392,15 +421,125 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 			if (Objects.isNull(mappedResponse)) {
 				this.logger.warn(String.format(Constant.FETCHED_DATA_NULL_WARNING, endpoint, responseType.getClazz().getSimpleName()));
 			}
-
 			return mappedResponse;
-		} catch (FailedLoginException e) {
-			throw e;
 		} catch (JacksonException e) {
 			this.logger.error("Failed to parse JSON from endpoint %s, preview: %s".formatted(endpoint, previewedResponse), e);
 			return null;
-		} catch (Exception e) {
-			throw new IllegalStateException(Constant.FETCH_DATA_FAILED.formatted(endpoint), e);
 		}
+	}
+
+	/**
+	 * Sends a single control POST request, without any session recovery.
+	 * <p>
+	 * The panel answers a request on an expired session with 301 to its login page. The HTTP client follows it as a GET
+	 * and gets the login page HTML; an unfollowed redirect comes back as a 3xx. Both mean the session was rejected.
+	 * The body is read as a {@link String} because {@code doPost(String, Object)} discards it, which would make the
+	 * followed redirect look like a successful control.
+	 * </p>
+	 *
+	 * @param endpoint the target endpoint
+	 * @param body the request body
+	 * @return the response
+	 * @throws ServiceNotAvailableException if the device redirected the request or answered with an HTML page
+	 * @throws Exception if the request fails
+	 */
+	private ResponseEntity<String> postControl(String endpoint, Map<String, Object> body) throws Exception {
+		ResponseEntity<String> response = this.doRequest(endpoint, HttpMethod.POST, new HttpHeaders(), body, String.class);
+		if (response == null) {
+			return null;
+		}
+		if (response.getStatusCode().is3xxRedirection()) {
+			this.logger.warn("Endpoint %s answered %d, redirect to %s".formatted(
+					endpoint, response.getStatusCode().value(), response.getHeaders().getFirst(HttpHeaders.LOCATION)));
+			throw new ServiceNotAvailableException(Constant.UNEXPECTED_REDIRECT_RESPONSE.formatted(endpoint));
+		}
+		String responseBody = response.getBody();
+		if (responseBody != null && responseBody.trim().startsWith(Constant.HTML_RESPONSE_PREFIX)) {
+			this.logger.warn("Endpoint %s returned HTML instead of JSON, preview: %s"
+					.formatted(endpoint, responseBody.trim().substring(0, Math.min(150, responseBody.trim().length()))));
+			throw new ServiceNotAvailableException(Constant.UNEXPECTED_HTML_RESPONSE.formatted(endpoint));
+		}
+		return response;
+	}
+
+	/**
+	 * Runs a device request and, if the device rejected the login session, logs in again and retries the request once.
+	 * <p>
+	 * The device rejects a session that expired, was ended by another login, or was lost on reboot. It does that with
+	 * 401/403, or by redirecting to its login page, which arrives as an HTML body.
+	 * </p>
+	 *
+	 * @param endpoint the endpoint being requested, used for logging
+	 * @param request the request to run
+	 * @param <T> the request's result type
+	 * @return the request's result
+	 * @throws FailedLoginException if the device still answers 401/403 after a fresh login
+	 * @throws ServiceNotAvailableException if the device still answers with HTML or a redirect after a fresh login,
+	 * which means it accepted the credentials but its web service is not answering requests
+	 * @throws Exception any other failure of the request or of the login
+	 */
+	private <T> T executeWithSession(String endpoint, SessionRequest<T> request) throws Exception {
+		try {
+			return request.execute();
+		} catch (Exception e) {
+			if (!isSessionRejected(e)) {
+				throw e;
+			}
+			this.logger.warn(Constant.SESSION_REJECTED_WARNING.formatted(endpoint), e);
+		}
+		this.resetSession();
+		this.authenticate();
+		try {
+			return request.execute();
+		} catch (Exception e) {
+			if (e instanceof ServiceNotAvailableException || !isSessionRejected(e)) {
+				throw e;
+			}
+			FailedLoginException loginException = new FailedLoginException(Constant.LOGIN_FAILED);
+			loginException.initCause(e);
+			throw loginException;
+		}
+	}
+
+	/**
+	 * Clears the stored login session, so that the next {@link #authenticate()} call logs in again.
+	 */
+	private void resetSession() {
+		this.authCookie.setTrackId(null);
+		this.authCookie.setCookie(null);
+		this.authCookie.setRefreshToken(null);
+	}
+
+	/**
+	 * Checks whether a request failed because the device did not accept the login session.
+	 *
+	 * @param e the request failure
+	 * @return {@code true} for a 401/403 response, a redirect or an HTML (login page) response; {@code false} otherwise
+	 */
+	private static boolean isSessionRejected(Exception e) {
+		if (e instanceof ServiceNotAvailableException || e instanceof FailedLoginException) {
+			return true;
+		}
+		if (e instanceof CommandFailureException commandFailure) {
+			return isAuthStatus(commandFailure.getStatusCode());
+		}
+		if (e instanceof HttpStatusCodeException httpStatusException) {
+			return isAuthStatus(httpStatusException.getStatusCode().value());
+		}
+		return false;
+	}
+
+	private static boolean isAuthStatus(int statusCode) {
+		return statusCode == HttpStatus.UNAUTHORIZED.value() || statusCode == HttpStatus.FORBIDDEN.value();
+	}
+
+	/**
+	 * A device request that can be retried after logging in again.
+	 *
+	 * @param <T> the request's result type
+	 */
+	@FunctionalInterface
+	private interface SessionRequest<T> {
+		T execute() throws Exception;
 	}
 }
