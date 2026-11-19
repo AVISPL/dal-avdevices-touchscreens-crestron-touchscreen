@@ -35,6 +35,7 @@ import javax.security.auth.login.FailedLoginException;
 import org.apache.commons.collections.CollectionUtils;
 
 import com.avispl.symphony.api.common.error.InvalidArgumentException;
+import com.avispl.symphony.api.common.error.ServiceNotAvailableException;
 import com.avispl.symphony.api.dal.control.Controller;
 import com.avispl.symphony.api.dal.dto.control.AdvancedControllableProperty;
 import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
@@ -45,7 +46,6 @@ import com.avispl.symphony.api.dal.error.ResourceNotReachableException;
 import com.avispl.symphony.api.dal.monitor.Monitorable;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.constants.Constant;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.constants.EndpointConstant;
-import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.exceptions.UnexpectedResponseException;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.utils.ControlUtil;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.utils.MonitoringUtil;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.models.AuthCookie;
@@ -300,7 +300,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 					.orElseThrow(() -> new InvalidArgumentException("Unsupported property %s to control".formatted(controllableProperty.getProperty())));
 			Map<String, Object> body = ControlUtil.buildDisplayRequest(display, controllableProperty.getValue());
 			this.executeWithSession(EndpointConstant.DISPLAY, () -> this.postControl(EndpointConstant.DISPLAY, body));
-		} catch (InvalidArgumentException | FailedLoginException | ResourceNotReachableException | UnexpectedResponseException ex) {
+		} catch (InvalidArgumentException | FailedLoginException | ResourceNotReachableException | ServiceNotAvailableException ex) {
 			throw ex;
 		} catch (Exception ex) {
 			throw new IllegalStateException(Constant.CONTROL_PROPERTY_FAILED, ex);
@@ -384,7 +384,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	public <T> T fetchData(String endpoint, ResponseType responseType) throws FailedLoginException {
 		try {
 			return this.executeWithSession(endpoint, () -> this.fetchDataOnce(endpoint, responseType));
-		} catch (FailedLoginException | UnexpectedResponseException e) {
+		} catch (FailedLoginException | ServiceNotAvailableException e) {
 			throw e;
 		} catch (Exception e) {
 			throw new IllegalStateException(Constant.FETCH_DATA_FAILED.formatted(endpoint), e);
@@ -398,7 +398,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	 * @param responseType defines how to extract and map the response into a specific class
 	 * @param <T> the generic type representing the expected response object
 	 * @return the mapped response object, or {@code null} if the response is empty or is JSON that cannot be mapped
-	 * @throws UnexpectedResponseException if the device answered with an HTML page (e.g. its login page) instead of JSON
+	 * @throws ServiceNotAvailableException if the device answered with an HTML page (e.g. its login page) instead of JSON
 	 * @throws Exception if the request fails
 	 */
 	private <T> T fetchDataOnce(String endpoint, ResponseType responseType) throws Exception {
@@ -410,7 +410,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 		String previewedResponse = response.substring(0, Math.min(150, response.length()));
 		if (response.startsWith(Constant.HTML_RESPONSE_PREFIX)) {
 			this.logger.warn("Endpoint %s returned HTML instead of JSON, preview: %s".formatted(endpoint, previewedResponse));
-			throw new UnexpectedResponseException(Constant.UNEXPECTED_HTML_RESPONSE.formatted(endpoint));
+			throw new ServiceNotAvailableException(Constant.UNEXPECTED_HTML_RESPONSE.formatted(endpoint));
 		}
 		try {
 			JsonNode responseNode = responseType.extractNode(this.objectMapper.readTree(response));
@@ -440,7 +440,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	 * @param endpoint the target endpoint
 	 * @param body the request body
 	 * @return the response
-	 * @throws UnexpectedResponseException if the device redirected the request or answered with an HTML page
+	 * @throws ServiceNotAvailableException if the device redirected the request or answered with an HTML page
 	 * @throws Exception if the request fails
 	 */
 	private ResponseEntity<String> postControl(String endpoint, Map<String, Object> body) throws Exception {
@@ -451,13 +451,13 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 		if (response.getStatusCode().is3xxRedirection()) {
 			this.logger.warn("Endpoint %s answered %d, redirect to %s".formatted(
 					endpoint, response.getStatusCode().value(), response.getHeaders().getFirst(HttpHeaders.LOCATION)));
-			throw new UnexpectedResponseException(Constant.UNEXPECTED_REDIRECT_RESPONSE.formatted(endpoint));
+			throw new ServiceNotAvailableException(Constant.UNEXPECTED_REDIRECT_RESPONSE.formatted(endpoint));
 		}
 		String responseBody = response.getBody();
 		if (responseBody != null && responseBody.trim().startsWith(Constant.HTML_RESPONSE_PREFIX)) {
 			this.logger.warn("Endpoint %s returned HTML instead of JSON, preview: %s"
 					.formatted(endpoint, responseBody.trim().substring(0, Math.min(150, responseBody.trim().length()))));
-			throw new UnexpectedResponseException(Constant.UNEXPECTED_HTML_RESPONSE.formatted(endpoint));
+			throw new ServiceNotAvailableException(Constant.UNEXPECTED_HTML_RESPONSE.formatted(endpoint));
 		}
 		return response;
 	}
@@ -474,7 +474,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	 * @param <T> the request's result type
 	 * @return the request's result
 	 * @throws FailedLoginException if the device still answers 401/403 after a fresh login
-	 * @throws UnexpectedResponseException if the device still answers with HTML or a redirect after a fresh login,
+	 * @throws ServiceNotAvailableException if the device still answers with HTML or a redirect after a fresh login,
 	 * which means it accepted the credentials but its web service is not answering requests
 	 * @throws Exception any other failure of the request or of the login
 	 */
@@ -492,7 +492,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 		try {
 			return request.execute();
 		} catch (Exception e) {
-			if (e instanceof UnexpectedResponseException || !isSessionRejected(e)) {
+			if (e instanceof ServiceNotAvailableException || !isSessionRejected(e)) {
 				throw e;
 			}
 			FailedLoginException loginException = new FailedLoginException(Constant.LOGIN_FAILED);
@@ -517,7 +517,7 @@ public class CrestronTouchPanelCommunicator extends RestCommunicator implements 
 	 * @return {@code true} for a 401/403 response, a redirect or an HTML (login page) response; {@code false} otherwise
 	 */
 	private static boolean isSessionRejected(Exception e) {
-		if (e instanceof UnexpectedResponseException || e instanceof FailedLoginException) {
+		if (e instanceof ServiceNotAvailableException || e instanceof FailedLoginException) {
 			return true;
 		}
 		if (e instanceof CommandFailureException commandFailure) {

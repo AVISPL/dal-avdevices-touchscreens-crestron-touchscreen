@@ -20,11 +20,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+import com.avispl.symphony.api.common.error.ServiceNotAvailableException;
 import com.avispl.symphony.api.dal.dto.control.ControllableProperty;
 import com.avispl.symphony.api.dal.dto.monitor.ExtendedStatistics;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.constants.Constant;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.constants.EndpointConstant;
-import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.common.exceptions.UnexpectedResponseException;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.Display;
 import com.avispl.symphony.dal.avdevices.touchscreens.crestron.touchscreen.types.properties.General;
 
@@ -123,12 +123,12 @@ class SessionRecoveryTest {
 	}
 
 	@Test
-	void reportsUnexpectedResponseWhenFreshSessionIsAlsoRedirected() throws Exception {
+	void reportsServiceNotAvailableWhenFreshSessionIsAlsoRedirected() throws Exception {
 		Assertions.assertEquals(MODEL, this.pollModel());
 
 		this.rejectEverySession = true;
 
-		UnexpectedResponseException e = Assertions.assertThrows(UnexpectedResponseException.class, () -> this.communicator.getMultipleStatistics());
+		ServiceNotAvailableException e = Assertions.assertThrows(ServiceNotAvailableException.class, () -> this.communicator.getMultipleStatistics());
 		Assertions.assertEquals(Constant.UNEXPECTED_HTML_RESPONSE.formatted(EndpointConstant.DEVICE_INFO), e.getMessage(),
 				"The message is for the end user: no response body or redirect details");
 		Assertions.assertEquals(2, this.successfulLogins.get(), "Must retry once, not loop");
