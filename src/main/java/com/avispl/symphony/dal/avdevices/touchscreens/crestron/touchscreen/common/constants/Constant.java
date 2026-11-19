@@ -60,5 +60,7 @@ public final class Constant {
 	public static final String MAP_TO_UPTIME_FAILED = "Failed to mapToUptime with uptime: ";
 	public static final String MAP_TO_UPTIME_MIN_FAILED = "Failed to mapToUptimeMin with uptime: ";
 	public static final String LOGIN_FAILED = "Failed to login, please check the credentials";
+	public static final String SESSION_REJECTED_WARNING = "The device rejected the login session on %s, logging in again and retrying";
+	public static final String HTML_RESPONSE_PREFIX = "<";
 	public static final String CONTROL_PROPERTY_FAILED = "Unable to perform this action at the moment. Please try again later";
 }
